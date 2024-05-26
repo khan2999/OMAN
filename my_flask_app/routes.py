@@ -1,9 +1,14 @@
-from my_flask_app import app
 from flask import render_template, request, jsonify
+from my_flask_app import app
 from my_flask_app.db import get_db_connection
+import mysql.connector
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+@app.route('/')
+def welcome_page():
+    return render_template('welcome.html')
+
+@app.route('/analysis', methods=['GET', 'POST'])
+def analysis_page():
     data = None  # Initialize data variable
 
     if request.method == 'POST':
@@ -39,11 +44,12 @@ def get_stores():
                     s.city, 
                     s.state, 
                     YEAR(o.orderDate) as year, 
+                    MONTH(o.orderDate) as month,
                     COALESCE(ROUND(SUM(o.total), 2), 0) as total
                 FROM stores s
                 LEFT JOIN orders o ON s.storeID = o.storeID
-                GROUP BY s.storeID, s.latitude, s.longitude, s.city, s.state, YEAR(o.orderDate)
-                ORDER BY s.storeID, year
+                GROUP BY s.storeID, s.latitude, s.longitude, s.city, s.state, YEAR(o.orderDate), MONTH(o.orderDate)
+                ORDER BY s.storeID, year, month
             """)
             stores = cursor.fetchall()
 

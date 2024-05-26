@@ -4,23 +4,76 @@
     <meta charset="UTF-8">
     <title>Store Locations and Data Selection</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-          #map {
-            height: 600px;
-            width: 100%; /* Breite auf 70% gesetzt */
-            margin: auto; /* Zentriert die Karte horizontal */
+        body {
+            display: flex;
+            flex-direction: column; /* Ändert die Ausrichtung der Hauptcontainer auf eine Spalte */
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
-        .up-arrow {
-            color: green;
+        #header {
+            width: 100%;
+            text-align: center;
+            margin-top: 10px;
         }
-        .down-arrow {
-            color: red;
+        #content {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+            height: 90%;
+        }
+        #map {
+            height: 60%;
+            width: 50%;
+            margin-top: 20px; /* Verschiebt die Karte nach unten */
+        }
+        #chart-container {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            margin-top: 20px; /* Verschiebt das Diagramm nach unten */
+        }
+        #chart {
+            width: 100%;
+            height: 90%;
+        }
+        #controls {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .highlight {
+            fill: yellow !important;
+            stroke: orange !important;
+            stroke-width: 2 !important;
         }
     </style>
 </head>
 <body>
-    <h1>Store Locations</h1>
-    <div id="map"></div>
+    <div id="header">
+        <h1>Store Locations and Data Selection</h1>
+    </div>
+    <div id="content">
+        <div id="chart-container">
+            <div id="controls">
+                <label for="year-select">Select Year:</label>
+                <select id="year-select">
+                    <!-- Options will be populated dynamically -->
+                </select>
+                <button id="update-chart">Update Chart</button>
+            </div>
+            <canvas id="chart"></canvas>
+        </div>
+        <div id="map"></div>
+    </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
@@ -29,6 +82,84 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+        var selectedStores = {};
+        var chart;
+        var availableYears = new Set();  // To store unique years from the data
+        var markers = {};  // To keep track of all markers
+
+        // Funktion zur Berechnung der Markierungsgröße basierend auf dem Gesamtumsatz
+        function getMarkerSize(total) {
+            return Math.sqrt(total) * 0.05;  // Erhöhe den Skalierungsfaktor
+        }
+
+        // Funktion zur Generierung zufälliger Farben
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Funktion zur Aktualisierung des Diagramms
+        function updateChart(selectedYear) {
+            const labels = Array.from({length: 12}, (v, k) => new Date(0, k).toLocaleString('en', { month: 'short' }));
+            const datasets = Object.values(selectedStores).map(store => {
+                const monthlyTotals = Array(12).fill(0);
+                if (store.monthlyTotals && store.monthlyTotals[selectedYear]) {
+                    store.monthlyTotals[selectedYear].forEach((total, index) => {
+                        monthlyTotals[index] = total;
+                    });
+                }
+                return {
+                    label: store.storeID,
+                    data: monthlyTotals,
+                    fill: false,
+                    borderColor: store.color,
+                    backgroundColor: store.color,
+                    tension: 0.1
+                };
+            });
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(document.getElementById('chart'), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Month'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Total Sales'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Funktion zum Hervorheben eines Markers
+        function highlightMarker(storeID) {
+            Object.values(markers).forEach(marker => marker.setStyle({ fillColor: marker.options.originalColor, color: marker.options.originalColor }));
+            if (markers[storeID]) {
+                markers[storeID].setStyle({ fillColor: 'yellow', color: 'orange', weight: 2 });
+            }
+        }
 
         // Fetch store data from server
         fetch('/stores')
@@ -42,17 +173,40 @@
                             longitude: store.longitude,
                             city: store.city,
                             state: store.state,
-                            totals: {}
+                            totals: {},
+                            monthlyTotals: {},
+                            years: []
                         };
                     }
-                    stores[store.storeID].totals[store.year] = store.total;
+                    if (!stores[store.storeID].monthlyTotals[store.year]) {
+                        stores[store.storeID].monthlyTotals[store.year] = Array(12).fill(0);
+                    }
+                    stores[store.storeID].totals[store.year] = (stores[store.storeID].totals[store.year] || 0) + store.total;
+                    stores[store.storeID].monthlyTotals[store.year][store.month - 1] += store.total;
+                    availableYears.add(store.year);  // Add year to the set of available years
+                    if (!stores[store.storeID].years.includes(store.year)) {
+                        stores[store.storeID].years.push(store.year);
+                    }
+                });
+
+                // Populate the year selection dropdown
+                const yearSelect = document.getElementById('year-select');
+                availableYears.forEach(year => {
+                    const option = document.createElement('option');
+                    option.value = year;
+                    option.textContent = year;
+                    yearSelect.appendChild(option);
                 });
 
                 for (let storeID in stores) {
                     let store = stores[storeID];
-                    let marker = L.marker([store.latitude, store.longitude]).addTo(map);
+                    let totalSales = Object.values(store.totals).reduce((a, b) => a + b, 0);  // Gesamten Umsatz berechnen
+                    let markerSize = getMarkerSize(totalSales);
+
                     let popupContent = `<b>${storeID}</b><br>${store.city}, ${store.state}<br>`;
                     let prevTotal = null;
+                    let lastArrow = '';
+                    let lastDiff = 0;
 
                     for (let year in store.totals) {
                         let total = store.totals[year];
@@ -62,61 +216,64 @@
                         if (prevTotal !== null) {
                             let diff = total - prevTotal;
                             if (diff > 0) {
-                                arrow = '▲'; // Unicode für dickeren Pfeil nach oben
+                                arrow = '▲'; // Unicode für Pfeil nach oben
                                 delta = `(+${diff.toFixed(2)})`;
+                                lastArrow = '▲';
+                                lastDiff = diff;
                             } else if (diff < 0) {
-                                arrow = '▼'; // Unicode für dickeren Pfeil nach unten
+                                arrow = '▼'; // Unicode für Pfeil nach unten
                                 delta = `(${diff.toFixed(2)})`;
+                                lastArrow = '▼';
+                                lastDiff = diff;
                             }
                         }
 
                         prevTotal = total;
 
-                        popupContent += `Year ${year}: $${total} <span class="${arrow === '↑' ? 'up-arrow' : 'down-arrow'}">${arrow}</span> ${delta}<br>`;
+                        popupContent += `Year ${year}: $${total} <span class="${arrow === '▲' ? 'up-arrow' : 'down-arrow'}">${arrow}</span> ${delta}<br>`;
                     }
+
+                    // Set marker color based on the last arrow
+                    let markerColor = lastArrow === '▲' ? 'green' : 'red';
+                    store.color = getRandomColor();  // Set random color for each store
+
+                    let marker = L.circleMarker([store.latitude, store.longitude], {
+                        radius: markerSize,
+                        color: markerColor,
+                        fillColor: markerColor,
+                        fillOpacity: 0.5,  // Reduziere die Opazität für bessere Sichtbarkeit
+                        weight: 1,  // Verkleinere die Randdicke
+                        originalColor: markerColor
+                    }).addTo(map);
+
                     marker.bindPopup(popupContent);
+
+                    marker.on('click', function() {
+                        if (selectedStores[storeID]) {
+                            delete selectedStores[storeID];
+                        } else {
+                            selectedStores[storeID] = {
+                                storeID: storeID,
+                                totals: store.totals,
+                                monthlyTotals: store.monthlyTotals,
+                                years: store.years,
+                                color: store.color
+                            };
+                        }
+                        highlightMarker(storeID);
+                        const selectedYear = document.getElementById('year-select').value;
+                        updateChart(selectedYear);
+                    });
+
+                    markers[storeID] = marker;
                 }
             })
             .catch(error => console.error('Error fetching store data:', error));
+
+        document.getElementById('update-chart').addEventListener('click', function() {
+            const selectedYear = document.getElementById('year-select').value;
+            updateChart(selectedYear);
+        });
     </script>
-
-    <h1>Select Table and Display Data</h1>
-    <form action="/" method="post">
-        <label for="table">Select Table:</label>
-        <select id="table" name="table">
-            <option value="stores">Stores</option>
-            <option value="products">Products</option>
-            <option value="customers">Customers</option>
-            <!-- Add more options for other tables -->
-        </select>
-        <br><br>
-        <label for="column">Select Column:</label>
-        <select id="column" name="column">
-            <option value="*">All Columns</option> <!-- Option to select all columns -->
-            <option value="storeID">Store ID</option>
-            <option value="zipcode">Zip Code</option>
-            <option value="state">State</option>
-            <option value="city">City</option>
-            <option value="distance">Distance</option>
-            <option value="Name">Name</option>
-            <option value="Price">Price</option>
-            <option value="Category">Category</option>
-            <option value="SKU">SKU</option>
-            <option value="Size">Size</option>
-            <!-- Add more options for other columns -->
-        </select>
-        <br><br>
-        <input type="submit" value="Show Data">
-    </form>
-
-    <!-- Display data if available -->
-    {% if data %}
-        <h2>Selected Data:</h2>
-        <ul>
-            {% for row in data %}
-                <li>{{ row }}</li>
-            {% endfor %}
-        </ul>
-    {% endif %}
 </body>
 </html>

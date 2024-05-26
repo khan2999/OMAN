@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Manager Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #chartSelector {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            background-color: #fff;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #chartContainer {
+            width: 100%;
+            height: 60vh;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+<h1>Manager Dashboard</h1>
+
+<select id="chartSelector">
+    <option value="total_sales_by_category">Total Sales by Category</option>
+    <option value="sales_trends_over_time">Sales Trends Over Time</option>
+    <option value="top-selling-products">Top Selling Products</option>
+    <option value="customer-distribution">Customer Distribution by Region</option>
+</select>
+
+<div id="chartContainer"></div>
+
+<script>
+    const chartsData = {{ charts_data | safe }};
+
+    // Function to render chart
+    function renderChart(chartData, chartLabels, chartType, title) {
+        var chartContainer = document.getElementById('chartContainer');
+        var chart = echarts.init(chartContainer);
+        var option = {
+            title: { text: title },
+            tooltip: {},
+            xAxis: { type: 'category', data: chartLabels },
+            yAxis: { type: 'value' },
+            series: [{ name: title, type: chartType, data: chartData }]
+        };
+        chart.setOption(option);
+        window.addEventListener('resize', function() {
+            chart.resize();
+        });
+    }
+
+    // Function to update chart based on selection
+    function updateChart() {
+        const selectedChart = chartSelector.value;
+        let chartData, chartLabels, chartType, title;
+
+        switch (selectedChart) {
+            case 'total_sales_by_category':
+                const totalSalesByCategoryData = chartsData.total_sales_by_category;
+                chartLabels = totalSalesByCategoryData.map(item => item[0]);
+                chartData = totalSalesByCategoryData.map(item => item[1]);
+                chartType = 'bar';
+                title = 'Total Sales by Product Category';
+                break;
+            case 'sales_trends_over_time':
+                const salesTrendsOverTimeData = chartsData.sales_trends_over_time;
+                chartLabels = salesTrendsOverTimeData.map(item => item[0] + '-' + item[1]);
+                chartData = salesTrendsOverTimeData.map(item => item[2]);
+                chartType = 'line';
+                title = 'Sales Trends Over Time';
+                break;
+            case 'top-selling-products':
+                const topSellingProductsData = chartsData.top_selling_products;
+                chartLabels = topSellingProductsData.map(item => item[0]);
+                chartData = topSellingProductsData.map(item => item[1]);
+                chartType = 'bar';
+                title = 'Top Selling Products';
+                break;
+            case 'customer-distribution':
+                const customerDistributionData = chartsData.customer_distribution;
+                chartLabels = customerDistributionData.map(item => item[0]);
+                chartData = customerDistributionData.map(item => item[1]);
+                chartType = 'bar';
+                title = 'Customer Distribution by Region';
+                break;
+        }
+
+        renderChart(chartData, chartLabels, chartType, title);
+    }
+
+    const chartSelector = document.getElementById('chartSelector');
+    chartSelector.addEventListener('change', updateChart);
+
+    // Initialize the first chart
+    window.onload = updateChart;
+</script>
+</body>
+</html>
