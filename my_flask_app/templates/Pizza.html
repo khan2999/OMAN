@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pizza Menu</title>
+    <style>
+        .data {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data th, .data td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .data th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <script>
+        function fetchRevenue() {
+            fetch('/revenue')
+            .then(response => response.json())
+            .then(data => {
+                let revenueHtml = '<h3>Revenue Data</h3><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
+                data.forEach(item => {
+                    revenueHtml += `<tr><td>${item.year}</td><td>${item.quarter}</td><td>$${item.total_revenue.toFixed(2)}</td></tr>`;
+                });
+                revenueHtml += '</tbody></table>';
+                document.getElementById('portfolio').innerHTML = revenueHtml;
+            })
+            .catch(error => {
+                console.error('Error fetching revenue:', error);
+                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching revenue.</h3>';
+            });
+        }
+
+        function fetchProductPortfolio() {
+            fetch('/product_portfolio')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('portfolio').innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Error fetching product portfolio:', error);
+                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching the product portfolio.</h3>';
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Pizza Menu</h1>
+    <button onclick="fetchRevenue()">Show Revenue</button>
+    <button onclick="fetchProductPortfolio()">Show Product Portfolio</button>
+    <div id="portfolio"></div>
+</body>
+</html>

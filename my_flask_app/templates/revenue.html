@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pizza Menu</title>
+    <style>
+        .data {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .data th, .data td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+        .data th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    <script>
+        function fetchRevenue() {
+            const quarter = document.getElementById('quarter').value;
+            const startYear = document.getElementById('start-year').value;
+            const endYear = document.getElementById('end-year').value;
+
+            fetch(`/revenue?quarter=${quarter}&start_year=${startYear}&end_year=${endYear}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data); // Debug: log the response data
+                let revenueHtml = '<h3>Revenue Data</h3><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
+                data.forEach(item => {
+                    revenueHtml += `<tr><td>${item.year}</td><td>${item.quarter}</td><td>$${item.total_revenue.toFixed(2)}</td></tr>`;
+                });
+                revenueHtml += '</tbody></table>';
+                document.getElementById('portfolio').innerHTML = revenueHtml;
+            })
+            .catch(error => {
+                console.error('Error fetching revenue:', error); // Debug: log the error
+                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching revenue.</h3>';
+            });
+        }
+
+        function fetchProductPortfolio() {
+            fetch('/product_portfolio')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('portfolio').innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Error fetching product portfolio:', error); // Debug: log the error
+                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching the product portfolio.</h3>';
+            });
+        }
+    </script>
+</head>
+<body>
+    <h1>Pizza Menu</h1>
+    <button onclick="document.getElementById('revenue-form').style.display='block'">Show Revenue</button>
+    <button onclick="fetchProductPortfolio()">Show Product Portfolio</button>
+
+    <div id="revenue-form" style="display:none;">
+        <h3>Select Quarter and Year Range</h3>
+        <form onsubmit="event.preventDefault(); fetchRevenue();">
+            <label for="quarter">Quarter:</label>
+            <select id="quarter" name="quarter">
+                <option value="all">All</option>
+                <option value="1">Q1</option>
+                <option value="2">Q2</option>
+                <option value="3">Q3</option>
+                <option value="4">Q4</option>
+            </select>
+            <br>
+            <label for="start-year">Start Year:</label>
+            <input type="number" id="start-year" name="start-year" min="2021" max="2023" value="2021">
+            <br>
+            <label for="end-year">End Year:</label>
+            <input type="number" id="end-year" name="end-year" min="2021" max="2023" value="2023">
+            <br>
+            <button type="submit">Fetch Revenue</button>
+        </form>
+    </div>
+
+    <div id="portfolio"></div>
+</body>
+</html>
