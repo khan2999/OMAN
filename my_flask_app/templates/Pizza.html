@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pizza Menu</title>
-    <style>
+    <title>Number Based Analysis</title>
+     <style>
         .data {
             width: 100%;
             border-collapse: collapse;
@@ -15,10 +15,34 @@
         .data th {
             background-color: #f2f2f2;
         }
+
+        /* Button Styles */
+        .button {
+            background-color: #3498db;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition-duration: 0.4s;
+        }
+
+        .button:hover {
+            background-color: #2980b9;
+        }
     </style>
     <script>
         function fetchRevenue() {
-            fetch('/revenue')
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+            const quarter = document.getElementById('quarter').value;
+
+            fetch(`/revenue?start_year=${startYear}&end_year=${endYear}&quarter=${quarter}`)
             .then(response => response.json())
             .then(data => {
                 let revenueHtml = '<h3>Revenue Data</h3><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
@@ -48,8 +72,22 @@
     </script>
 </head>
 <body>
-    <h1>Pizza Menu</h1>
-    <button onclick="fetchRevenue()">Show Revenue</button>
+    <h1>Data Analysis</h1>
+    <div>
+        <label for="startYear">Start Year:</label>
+        <input type="number" id="startYear" name="startYear" value="2021">
+        <label for="endYear">End Year:</label>
+        <input type="number" id="endYear" name="endYear" value="2023">
+        <label for="quarter">Quarter:</label>
+        <select id="quarter" name="quarter">
+            <option value="all">All</option>
+            <option value="1">Q1</option>
+            <option value="2">Q2</option>
+            <option value="3">Q3</option>
+            <option value="4">Q4</option>
+        </select>
+        <button onclick="fetchRevenue()">Show Revenue</button>
+    </div>
     <button onclick="fetchProductPortfolio()">Show Product Portfolio</button>
     <div id="portfolio"></div>
 </body>

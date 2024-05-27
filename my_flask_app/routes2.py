@@ -54,12 +54,24 @@ def revenue():
                 QUARTER(orderDate) AS quarter, 
                 SUM(total) AS total_revenue
             FROM orders
-            WHERE YEAR(orderDate) BETWEEN 2020  AND 2023
+            WHERE YEAR(orderDate) BETWEEN %s AND %s
             GROUP BY YEAR(orderDate), QUARTER(orderDate)
             ORDER BY YEAR(orderDate), QUARTER(orderDate);
             """
             params = (start_year, end_year)
-
+        else:
+            quarter = int(quarter)
+            sql = """
+            SELECT 
+                YEAR(orderDate) AS year, 
+                QUARTER(orderDate) AS quarter, 
+                SUM(total) AS total_revenue
+            FROM orders
+            WHERE YEAR(orderDate) BETWEEN %s AND %s AND QUARTER(orderDate) = %s
+            GROUP BY YEAR(orderDate), QUARTER(orderDate)
+            ORDER BY YEAR(orderDate), QUARTER(orderDate);
+            """
+            params = (start_year, end_year, quarter)
 
         logging.debug(f"Executing SQL: {sql} with params: {params}")
         df = get_data_from_db(sql, params)

@@ -16,55 +16,25 @@
             background-color: #f2f2f2;
         }
     </style>
-    <script>
-        function fetchRevenue() {
-            const quarter = document.getElementById('quarter').value;
-            const startYear = document.getElementById('start-year').value;
-            const endYear = document.getElementById('end-year').value;
-
-            fetch(`/revenue?quarter=${quarter}&start_year=${startYear}&end_year=${endYear}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok ' + response.statusText);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log(data); // Debug: log the response data
-                let revenueHtml = '<h3>Revenue Data</h3><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
-                data.forEach(item => {
-                    revenueHtml += `<tr><td>${item.year}</td><td>${item.quarter}</td><td>$${item.total_revenue.toFixed(2)}</td></tr>`;
-                });
-                revenueHtml += '</tbody></table>';
-                document.getElementById('portfolio').innerHTML = revenueHtml;
-            })
-            .catch(error => {
-                console.error('Error fetching revenue:', error); // Debug: log the error
-                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching revenue.</h3>';
-            });
-        }
-
-        function fetchProductPortfolio() {
-            fetch('/product_portfolio')
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('portfolio').innerHTML = data;
-            })
-            .catch(error => {
-                console.error('Error fetching product portfolio:', error); // Debug: log the error
-                document.getElementById('portfolio').innerHTML = '<h3>An error occurred while fetching the product portfolio.</h3>';
-            });
-        }
-    </script>
 </head>
 <body>
     <h1>Pizza Menu</h1>
-    <button onclick="document.getElementById('revenue-form').style.display='block'">Show Revenue</button>
+    <button onclick="showRevenueForm()">Show Revenue</button>
     <button onclick="fetchProductPortfolio()">Show Product Portfolio</button>
-
-    <div id="revenue-form" style="display:none;">
-        <h3>Select Quarter and Year Range</h3>
-        <form onsubmit="event.preventDefault(); fetchRevenue();">
+    <div id="revenue-form-container" style="display: none;">
+        <form id="revenue-form">
+            <label for="start-year">Start Year:</label>
+            <select id="start-year" name="start_year">
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+            </select>
+            <label for="end-year">End Year:</label>
+            <select id="end-year" name="end_year">
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+            </select>
             <label for="quarter">Quarter:</label>
             <select id="quarter" name="quarter">
                 <option value="all">All</option>
@@ -73,17 +43,61 @@
                 <option value="3">Q3</option>
                 <option value="4">Q4</option>
             </select>
-            <br>
-            <label for="start-year">Start Year:</label>
-            <input type="number" id="start-year" name="start-year" min="2021" max="2023" value="2021">
-            <br>
-            <label for="end-year">End Year:</label>
-            <input type="number" id="end-year" name="end-year" min="2021" max="2023" value="2023">
-            <br>
             <button type="submit">Fetch Revenue</button>
         </form>
     </div>
-
+    <div id="revenue-data"></div>
     <div id="portfolio"></div>
+    <script>
+        function showRevenueForm() {
+            document.getElementById('revenue-form-container').style.display = 'block';
+        }
+
+        function fetchProductPortfolio() {
+            fetch('/product_portfolio')
+            .then(response => response.json())
+            .then(data => {
+                let portfolio = data.product_portfolio;
+                let html = '<h2>Product Portfolio</h2><table class="data"><thead><tr>';
+                for (let key in portfolio[0]) {
+                    html += '<th>' + key + '</th>';
+                }
+                html += '</tr></thead><tbody>';
+                portfolio.forEach(product => {
+                    html += '<tr>';
+                    for (let key in product) {
+                        html += '<td>' + product[key] + '</td>';
+                    }
+                    html += '</tr>';
+                });
+                html += '</tbody></table>';
+                document.getElementById('portfolio').innerHTML = html;
+            });
+        }
+
+        document.getElementById('revenue-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const startYear = document.getElementById('start-year').value;
+            const endYear = document.getElementById('end-year').value;
+            const quarter = document.getElementById('quarter').value;
+
+            console.log(`Fetching revenue data for ${startYear} to ${endYear}, quarter: ${quarter}`);
+
+            fetch(`/revenue?start_year=${startYear}&end_year=${endYear}&quarter=${quarter}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('Received data:', data);
+                let html = '<h2>Revenue Data</h2><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
+                data.forEach(row => {
+                    html += `<tr><td>${row.year}</td><td>${row.quarter}</td><td>${row.total_revenue}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('revenue-data').innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Error fetching revenue data:', error);
+            });
+        });
+    </script>
 </body>
 </html>
