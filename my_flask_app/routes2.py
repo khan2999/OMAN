@@ -85,9 +85,51 @@ def revenue():
 @app.route('/product_portfolio', methods=['GET', 'POST'])
 def product_portfolio():
     try:
-        sql = "SELECT * FROM products;"
+        year = request.args.get('year', type=int)
+        quarter = request.args.get('quarter', type=int)
+
+        logging.debug(f"Parameters - Year: {year}, Quarter: {quarter}")
+
+        if year:
+            if quarter:
+                sql = f"""
+                SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
+                FROM orderitems oi
+                JOIN products p ON oi.SKU = p.SKU
+                JOIN orders o ON oi.orderID = o.orderID
+                WHERE YEAR(o.orderDate) = {year} AND QUARTER(o.orderDate) = {quarter}
+                GROUP BY oi.SKU, p.Name
+                ORDER BY total_quantity_sold DESC
+                LIMIT 10;
+                """
+            else:
+                sql = f"""
+                SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
+                FROM orderitems oi
+                JOIN products p ON oi.SKU = p.SKU
+                JOIN orders o ON oi.orderID = o.orderID
+                WHERE YEAR(o.orderDate) = {year}
+                GROUP BY oi.SKU, p.Name
+                ORDER BY total_quantity_sold DESC
+                LIMIT 10;
+                """
+        else:
+            sql = """
+            SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
+            FROM orderitems oi
+            JOIN products p ON oi.SKU = p.SKU
+            JOIN orders o ON oi.orderID = o.orderID
+            WHERE YEAR(o.orderDate) >= YEAR(CURDATE()) - 2
+            GROUP BY oi.SKU, p.Name
+            ORDER BY total_quantity_sold DESC
+            LIMIT 10;
+            """
+
         logging.debug(f"Executing SQL: {sql}")
         df = get_data_from_db(sql)
+        logging.debug(f"DataFrame: {df}")
+        if df.empty:
+            logging.debug("No data found.")
         columns = df.columns.values
         data = df.values.tolist()
         logging.debug(f"Product Portfolio Data: {data}")
