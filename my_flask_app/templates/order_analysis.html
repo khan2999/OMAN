@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Order Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            width: 80%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #main {
+            width: 100%;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Order Analysis</h1>
+        <form id="analysisForm">
+            <label for="startYear">Start Year:</label>
+            <select id="startYear" name="startYear">
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+            </select>
+            <label for="endYear">End Year:</label>
+            <select id="endYear" name="endYear">
+                <option value="2020">2020</option>
+                <option value="2021">2021</option>
+                <option value="2022">2022</option>
+                <option value="2023">2023</option>
+            </select>
+            <button type="submit">Generate Chart</button>
+        </form>
+        <div id="main"></div>
+    </div>
+
+    <!-- Load echarts -->
+    <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
+    <script>
+        document.getElementById('analysisForm').onsubmit = function(event) {
+            event.preventDefault();
+
+            const formData = new FormData(event.target);
+            const searchParams = new URLSearchParams();
+
+            for (const pair of formData.entries()) {
+                searchParams.append(pair[0], pair[1]);
+            }
+
+            fetch('/order_analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: searchParams.toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                let chartDom = document.getElementById('main');
+                if (!chartDom) {
+                    console.error('Chart DOM element not found');
+                    return;
+                }
+                let myChart = echarts.init(chartDom);
+                if (!myChart) {
+                    console.error('Echarts initialization failed');
+                    return;
+                }
+                let option = {
+                    title: {
+                        text: 'Customer Order Analysis'
+                    },
+                    tooltip: {
+                        trigger: 'item'
+                    },
+                    legend: {
+                        top: '5%',
+                        left: 'center'
+                    },
+                    series: [
+                        {
+                            name: 'Orders',
+                            type: 'pie',
+                            radius: '50%',
+                            data: data,
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                };
+                myChart.setOption(option);
+            })
+            .catch(error => console.error('Error fetching order analysis:', error));
+        };
+    </script>
+</body>
+</html>

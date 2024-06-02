@@ -1,14 +1,10 @@
-import flask
-
-from flask import Flask, render_template, jsonify, request
-from my_flask_app.db import get_db_connection
-from my_flask_app import app
-import pandas as pd
-import mysql.connector
 import logging
 
+import mysql.connector
+import pandas as pd
+from flask import render_template, jsonify, request
 
-
+from my_flask_app import app
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -20,6 +16,7 @@ mydb = mysql.connector.connect(
     passwd="password",
     database="Pizza"
 )
+
 
 def get_data_from_db(query, params=None):
     try:
@@ -33,10 +30,12 @@ def get_data_from_db(query, params=None):
         logging.error(f"Error: {err}")
         return pd.DataFrame()
 
+
 @app.route('/analysis2', methods=['GET', 'POST'])
 def index():
     logging.debug("Rendering Pizza.html")
     return render_template('Pizza.html')
+
 
 @app.route('/revenue', methods=['GET'])
 def revenue():
@@ -81,6 +80,7 @@ def revenue():
     except Exception as e:
         logging.error(f"Error fetching revenue: {e}")
         return jsonify({'error': 'An error occurred while fetching the revenue.'}), 500
+
 
 @app.route('/product_portfolio', methods=['GET', 'POST'])
 def product_portfolio():
@@ -138,6 +138,7 @@ def product_portfolio():
     except Exception as e:
         logging.error(f"Error fetching product portfolio: {e}")
         return jsonify({'error': 'An error occurred while fetching the product portfolio.'}), 500
+
 
 if __name__ == '__main__':
     logging.debug("Starting Flask app")
