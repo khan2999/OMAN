@@ -30,16 +30,29 @@ def get_order_data(start_year, end_year):
 
 
 def process_data(orders):
-    unique_customers = set()
-    multiple_customers = set()
+    customer_order_count = {}
     for order in orders:
         customer_id = order['customerID']
-        if customer_id in unique_customers:
-            multiple_customers.add(customer_id)
+        if customer_id in customer_order_count:
+            customer_order_count[customer_id] += 1
         else:
-            unique_customers.add(customer_id)
-    one_time_customers = unique_customers - multiple_customers
-    return len(one_time_customers), len(multiple_customers)
+            customer_order_count[customer_id] = 1
+
+    one_time_customers = sum(1 for count in customer_order_count.values() if count == 1)
+    multiple_customers = sum(1 for count in customer_order_count.values() if 2 <= count < 10)
+    vip_customers = sum(1 for count in customer_order_count.values() if count >= 10)
+
+    one_time_orders = sum(count for count in customer_order_count.values() if count == 1)
+    multiple_orders = sum(count for count in customer_order_count.values() if 2 <= count < 10)
+    vip_orders = sum(count for count in customer_order_count.values() if count >= 10)
+
+    return {
+        "categories": [
+            {"name": "Walk-ins", "customers": one_time_customers, "orders": one_time_orders},
+            {"name": "Regulars", "customers": multiple_customers, "orders": multiple_orders},
+            {"name": "VIPs", "customers": vip_customers, "orders": vip_orders}
+        ]
+    }
 
 
 @app.route('/order_analysis', methods=['GET', 'POST'])
@@ -50,11 +63,7 @@ def analysis3_page():
         end_year = int(request.form.get('endYear'))
         if 2020 <= start_year <= 2023 and 2020 <= end_year <= 2023:
             orders = get_order_data(start_year, end_year)
-            one_time_customers_count, multiple_customers_count = process_data(orders)
-            data = [
-                {'value': one_time_customers_count, 'name': 'Einmalige Bestellungen'},
-                {'value': multiple_customers_count, 'name': 'Mehrfache Bestellungen'}
-            ]
+            data = process_data(orders)
             return jsonify(data)
     return render_template('order_analysis.html', data=data)
 
