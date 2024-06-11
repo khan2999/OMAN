@@ -136,3 +136,23 @@ h1 {
 .exit-drilldown-button:hover {
     background-color: #c82333;
 }
+
+.kpi {
+    background-color: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px;
+    text-align: center;
+}
+
+.kpi h3 {
+    color: #333;
+    margin: 0 0 10px 0;
+}
+
+.kpi p {
+    margin: 0;
+    font-size: 24px;
+    color: #007bff;
+}

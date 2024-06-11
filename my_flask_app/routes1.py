@@ -104,61 +104,98 @@ queries = {
 }
 
 
-def get_kpi_data():
-    queries = {
-        'average_order_value': """
-               SELECT AVG(total) AS average_order_value
-               FROM orders;
-           """,
-        'customer_retention_rate': """
-               SELECT 
-                   ROUND((COUNT(DISTINCT customerID) - COUNT(DISTINCT CASE WHEN DATEDIFF(CURDATE(), orderDate) <= 30 THEN customerID ELSE NULL END)) / COUNT(DISTINCT customerID) * 100, 2) AS retention_rate
-               FROM orders;
-           """,
-        'order_frequency': """
-               SELECT 
-                   ROUND(AVG(order_count), 2) AS average_order_frequency
-               FROM (
-                   SELECT customerID, COUNT(orderID) AS order_count
-                   FROM orders
-                   GROUP BY customerID
-               ) AS subquery;
-           """,
-        'conversion_rate': """
-               SELECT 
-                   ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
-               FROM orders;
-           """,
-        'customer_growth': """
-               SELECT 
-                   DATE_FORMAT(orderDate, '%Y-%m') AS month, 
-                   COUNT(DISTINCT customerID) AS total_customers
-               FROM orders
-               GROUP BY month;
-           """
-    }
-
-    kpi_data = {}
-    for kpi, query in queries.items():
-        data = execute_query(query)
-        kpi_data[kpi] = decimal_to_float(data)
-
-    return kpi_data
-
-
 @app.route('/kpi_data', methods=['GET'])
 def kpi_data():
-    kpis = get_kpi_data()
+    kpis = {}
+
+    # Average Order Value
+    avg_order_value_query = """
+            SELECT AVG(total) AS average_order_value
+            FROM orders;
+        """
+    avg_order_value = execute_query(avg_order_value_query)
+    kpis['average_order_value'] = decimal_to_float(avg_order_value)
+
+    customer_retention_rate = """
+                       SELECT 
+                           ROUND((COUNT(DISTINCT customerID) - COUNT(DISTINCT CASE WHEN DATEDIFF(CURDATE(), orderDate) <= 30 THEN customerID ELSE NULL END)) / COUNT(DISTINCT customerID) * 100, 2) AS retention_rate
+                       FROM orders;
+                   """
+    customer_retention_rate = execute_query(customer_retention_rate)
+    kpis['customer_retention_rate'] = decimal_to_float(customer_retention_rate)
+
+    # Order Frequency
+    order_frequency_query = """
+            SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
+            FROM (
+                SELECT customerID, COUNT(orderID) AS order_count
+                FROM orders
+                GROUP BY customerID
+            ) AS subquery;
+        """
+    order_frequency = execute_query(order_frequency_query)
+    kpis['order_frequency'] = decimal_to_float(order_frequency)
+    # Customer Growth
+    customer_growth = """
+                       SELECT 
+                           DATE_FORMAT(orderDate, '%Y-%m') AS month, 
+                           COUNT(DISTINCT customerID) AS total_customers
+                       FROM orders
+                       GROUP BY month;
+                   """
+    customer_growth = execute_query(customer_growth)
+    kpis['CustomerGrowth'] = decimal_to_float(customer_growth)
+    # Conversion Rate
+    conversion_rate_query = """
+            SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
+            FROM orders;
+        """
+    conversion_rate = execute_query(conversion_rate_query)
+    kpis['conversion_rate'] = decimal_to_float(conversion_rate)
+
     return jsonify(kpis)
 
 
 @app.route('/kpi_reports', methods=['GET', 'POST'])
 def kpi_reports():
-    kpi_data = get_kpi_data()
-    if request.method == 'POST':
-        # Handle form submission if needed
-        pass
-    return render_template('kpi_reports.html', kpi_data=kpi_data)
+    kpi_data = {}
+
+    queries = {
+        'average_order_value': """
+                SELECT AVG(total) AS average_order_value
+                FROM orders;
+            """,
+        'customer_retention_rate': """
+                SELECT ROUND((COUNT(DISTINCT customerID) - COUNT(DISTINCT CASE WHEN DATEDIFF(CURDATE(), orderDate) <= 30 THEN customerID ELSE NULL END)) / COUNT(DISTINCT customerID) * 100, 2) AS retention_rate
+                FROM orders;
+            """,
+        'order_frequency': """
+                SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
+                FROM (
+                    SELECT customerID, COUNT(orderID) AS order_count
+                    FROM orders
+                    GROUP BY customerID
+                ) AS subquery;
+            """,
+        'conversion_rate': """
+                SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
+                FROM orders;
+            """,
+        'customer_growth': """
+                           SELECT 
+                               DATE_FORMAT(orderDate, '%Y-%m') AS month, 
+                               COUNT(DISTINCT customerID) AS total_customers
+                           FROM orders
+                           GROUP BY month;
+                       """
+
+    }
+
+    for kpi, query in queries.items():
+        data = execute_query(query)
+        kpi_data[kpi] = decimal_to_float(data)
+
+    return render_template('kpi_reports.html', kpi_data=json.dumps(kpi_data))
 
 
 @app.route('/analysis1', methods=['GET', 'POST'])
