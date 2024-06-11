@@ -6,15 +6,57 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='pizza-background1.jpg') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            display: flex; 
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
         }
         .container {
-            width: 80%;
-            margin: 0 auto;
+            width: 90%;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.8); /* leicht transparente Hintergrundfarbe */
             padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        #main {
-            width: 100%;
+        #main, #orderCountChart {
+            width: 45%;
             height: 400px;
+            margin-top: 20px;
+            display: inline-block;
+        }
+        #errorMessage {
+            color: red;
+            font-weight: bold;
+            display: none; /* initially hidden */
+        }
+        form {
+            margin-bottom: 20px;
+        }
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        select {
+            margin-right: 20px;
+            padding: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
         }
     </style>
 </head>
@@ -27,27 +69,45 @@
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
                 <option value="2022">2022</option>
-                <option value="2023">2023</option>
+
             </select>
             <label for="endYear">End Year:</label>
             <select id="endYear" name="endYear">
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
                 <option value="2022">2022</option>
-                <option value="2023">2023</option>
+
             </select>
-            <button type="submit">Generate Chart</button>
+            <button type="button" onclick="validateAndGenerateChart('pie')">Pie Chart</button>
+            <button type="button" onclick="validateAndGenerateChart('bar')">Bar Chart</button>
         </form>
+        <div id="errorMessage">Error please correct your start year</div>
         <div id="main"></div>
+        <div id="orderCountChart"></div>
     </div>
 
     <!-- Load echarts -->
     <script src="{{ url_for('static', filename='echarts.min.js') }}"></script>
     <script>
-        document.getElementById('analysisForm').onsubmit = function(event) {
-            event.preventDefault();
+        let myChart;
+        let orderCountChart;
 
-            const formData = new FormData(event.target);
+        function validateAndGenerateChart(type) {
+            const startYear = parseInt(document.getElementById('startYear').value);
+            const endYear = parseInt(document.getElementById('endYear').value);
+
+            if (startYear > endYear) {
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('main').innerHTML = '';
+                document.getElementById('orderCountChart').innerHTML = '';
+            } else {
+                document.getElementById('errorMessage').style.display = 'none';
+                generateChart(type);
+            }
+        }
+
+        function generateChart(type) {
+            const formData = new FormData(document.getElementById('analysisForm'));
             const searchParams = new URLSearchParams();
 
             for (const pair of formData.entries()) {
@@ -63,47 +123,172 @@
             })
             .then(response => response.json())
             .then(data => {
-                let chartDom = document.getElementById('main');
-                if (!chartDom) {
-                    console.error('Chart DOM element not found');
-                    return;
+                var chartDom = document.getElementById('main');
+                var orderCountChartDom = document.getElementById('orderCountChart');
+
+                if (myChart) {
+                    myChart.dispose();
                 }
-                let myChart = echarts.init(chartDom);
-                if (!myChart) {
-                    console.error('Echarts initialization failed');
-                    return;
+                if (orderCountChart) {
+                    orderCountChart.dispose();
                 }
-                let option = {
-                    title: {
-                        text: 'Customer Order Analysis'
-                    },
-                    tooltip: {
-                        trigger: 'item'
-                    },
-                    legend: {
-                        top: '5%',
-                        left: 'center'
-                    },
-                    series: [
-                        {
-                            name: 'Orders',
-                            type: 'pie',
-                            radius: '50%',
-                            data: data,
-                            emphasis: {
-                                itemStyle: {
-                                    shadowBlur: 10,
-                                    shadowOffsetX: 0,
-                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+
+                myChart = echarts.init(chartDom);
+                orderCountChart = echarts.init(orderCountChartDom);
+
+                var option, orderCountOption;
+
+                if (type === 'pie') {
+                    option = {
+                        title: {
+                            text: 'Customer Order Analysis'
+                        },
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: function(params) {
+                                return `${params.name}: ${params.value} (${params.percent}%)<br/>Orders: ${params.data.orders}`;
+                            }
+                        },
+                        legend: {
+                            top: '5%',
+                            left: 'center'
+                        },
+                        series: [
+                            {
+                                name: 'Customers',
+                                type: 'pie',
+                                radius: '50%',
+                                data: data.categories.map(item => ({
+                                    value: item.customers,
+                                    name: item.name,
+                                    orders: item.orders
+                                })),
+                                emphasis: {
+                                    itemStyle: {
+                                        shadowBlur: 10,
+                                        shadowOffsetX: 0,
+                                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                    }
                                 }
                             }
-                        }
-                    ]
-                };
+                        ]
+                    };
+
+                    orderCountOption = {
+                        title: {
+                            text: 'Orders per Customer Category'
+                        },
+                        tooltip: {
+                            trigger: 'item',
+                            formatter: function(params) {
+                                return `${params.name}: ${params.value}`;
+                            }
+                        },
+                        legend: {
+                            top: '5%',
+                            left: 'center'
+                        },
+                        series: [
+                            {
+                                name: 'Orders',
+                                type: 'pie',
+                                radius: '50%',
+                                data: data.categories.map(item => ({
+                                    value: item.orders,
+                                    name: item.name
+                                })),
+                                emphasis: {
+                                    itemStyle: {
+                                        shadowBlur: 10,
+                                        shadowOffsetX: 0,
+                                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                    }
+                                }
+                            }
+                        ]
+                    };
+
+                } else if (type === 'bar') {
+                    option = {
+                        title: {
+                            text: 'Customer Analysis'
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            }
+                        },
+                        legend: {
+                            top: '5%',
+                            left: 'center'
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: data.categories.map(item => item.name)
+                        },
+                        yAxis: {
+                            type: 'value'
+                        },
+                        series: [
+                            {
+                                name: 'Customers',
+                                type: 'bar',
+                                data: data.categories.map(item => item.customers),
+                                emphasis: {
+                                    itemStyle: {
+                                        shadowBlur: 10,
+                                        shadowOffsetX: 0,
+                                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                    }
+                                }
+                            }
+                        ]
+                    };
+
+                    orderCountOption = {
+                        title: {
+                            text: 'Orders per Customer Category'
+                        },
+                        tooltip: {
+                            trigger: 'axis',
+                            axisPointer: {
+                                type: 'shadow'
+                            }
+                        },
+                        legend: {
+                            top: '5%',
+                            left: 'center'
+                        },
+                        xAxis: {
+                            type: 'category',
+                            data: data.categories.map(item => item.name)
+                        },
+                        yAxis: {
+                            type: 'value'
+                        },
+                        series: [
+                            {
+                                name: 'Orders',
+                                type: 'bar',
+                                data: data.categories.map(item => item.orders),
+                                emphasis: {
+                                    itemStyle: {
+                                        shadowBlur: 10,
+                                        shadowOffsetX: 0,
+                                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                    }
+                                }
+                            }
+                        ]
+                    };
+                }
+
                 myChart.setOption(option);
+                orderCountChart.setOption(orderCountOption);
             })
             .catch(error => console.error('Error fetching order analysis:', error));
-        };
+        }
     </script>
 </body>
 </html>
