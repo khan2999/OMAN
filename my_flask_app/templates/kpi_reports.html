@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Reports</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        nav {
+            background-color: #007bff;
+            padding: 10px 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        nav .logo {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-left: 20px;
+        }
+
+        nav ul li a {
+            text-decoration: none;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        nav ul li a:hover {
+            text-decoration: underline;
+        }
+
+        .main {
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .kpi-reports {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .kpi {
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .kpi h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .kpi p {
+            margin: 0;
+            font-size: 24px;
+            color: #007bff;
+        }
+
+    </style>
+</head>
+
+<body>
+<nav>
+    <div class="logo">My Dashboard</div>
+    <ul>
+        <li><a href="/">Home</a></li>
+        <li><a href="/kpi_reports">KPI Reports</a></li>
+    </ul>
+</nav>
+<main>
+    <section class="kpi-reports">
+        <div class="kpi" id="average_order_value">
+            <h3>Average Order Value</h3>
+            <p class="value" id="average_order_value_value"></p>
+        </div>
+        <div class="kpi" id="customer_retention_rate">
+            <h3>Customer Retention Rate</h3>
+            <p class="value" id="customer_retention_rate_value"></p>
+        </div>
+        <div class="kpi" id="order_frequency">
+            <h3>Order Frequency</h3>
+            <p class="value" id="order_frequency_value"></p>
+        </div>
+        <div class="kpi" id="conversion_rate">
+            <h3>Conversion Rate</h3>
+            <p class="value" id="conversion_rate_value"></p>
+        </div>
+    </section>
+</main>
+<script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
