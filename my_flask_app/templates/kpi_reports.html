@@ -4,39 +4,141 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KPI Reports</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
 
+        nav {
+            background-color: #333;
+            color: #fff;
+            padding: 1em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        nav .logo {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        nav ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+        }
+
+        nav ul li {
+            margin-left: 1em;
+        }
+
+        nav ul li a {
+            color: #fff;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        main {
+            padding: 2em;
+        }
+
+        .kpi-reports {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2em;
+        }
+
+        .kpi {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 1em;
+            text-align: center;
+        }
+
+        .kpi h3 {
+            margin-top: 0;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 300px;
+        }
+
+        @media (max-width: 768px) {
+            .kpi-reports {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
 <body>
 <nav>
-    <div class="logo">My Dashboard</div>
+    <div class="logo">kpi Reports</div>
     <ul>
         <li><a href="/">Home</a></li>
-        <li><a href="/kpi_reports">KPI Reports</a></li>
     </ul>
 </nav>
 <main>
     <section class="kpi-reports">
-        <div class="kpi" id="average_order_value">
+        <div class="kpi" id="average_order_value_chart">
             <h3>Average Order Value</h3>
-            <p class="value" id="average_order_value_value"></p>
+            <div class="chart-container"></div>
         </div>
-        <div class="kpi" id="customer_retention_rate">
+        <div class="kpi" id="customer_retention_rate_chart">
             <h3>Customer Retention Rate</h3>
-            <p class="value" id="customer_retention_rate_value"></p>
+            <div class="chart-container"></div>
         </div>
-        <div class="kpi" id="order_frequency">
+        <div class="kpi" id="order_frequency_chart">
             <h3>Order Frequency</h3>
-            <p class="value" id="order_frequency_value"></p>
+            <div class="chart-container"></div>
         </div>
-        <div class="kpi" id="conversion_rate">
+        <div class="kpi" id="conversion_rate_chart">
             <h3>Conversion Rate</h3>
-            <p class="value" id="conversion_rate_value"></p>
+            <div class="chart-container"></div>
+        </div>
+        <div class="kpi" id="customer_segmentation_chart">
+            <h3>Customer Segmentation</h3>
+            <div class="chart-container"></div>
         </div>
     </section>
 </main>
-<script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function renderKPIChart(elementId, kpiData) {
+            const chartContainer = document.getElementById(elementId).getElementsByClassName('chart-container')[0];
+            const kpiChart = echarts.init(chartContainer);
+            const option = {
+                series: [{
+                    type: 'gauge',
+                    detail: {formatter: '{value}%'},
+                    data: [{value: kpiData}]
+                }]
+            };
+            kpiChart.setOption(option);
+        }
+
+        fetch('/kpi_data')
+            .then(response => response.json())
+            .then(data => {
+                renderKPIChart('average_order_value_chart', data.average_order_value);
+                renderKPIChart('customer_retention_rate_chart', data.customer_retention_rate);
+                renderKPIChart('order_frequency_chart', data.order_frequency);
+                renderKPIChart('conversion_rate_chart', data.conversion_rate);
+                // Commenting out customer segmentation for now
+                // renderKPIChart('customer_segmentation_chart', data.customer_segmentation);
+            })
+            .catch(error => console.error('Error fetching KPI data:', error));
+    });
+</script>
 </body>
 </html>
