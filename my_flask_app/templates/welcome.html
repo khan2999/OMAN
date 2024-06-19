@@ -2,18 +2,105 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Welcome</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Analysis Portal</title>
+    <link rel="stylesheet" href="style.css">
     <style>
         body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            align-items: center;
+        }
+        header {
+            background-color: #007bff; /* Changed background color to blue */
+            color: #fff;
+            padding: 10px 0;
+            text-align: center;
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            height: 50px; /* Adjust as needed */
+        }
+        main {
+            width: 80%;
+            margin-top: 70px; /* Adjust based on header height */
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .left-panel {
+            width: 30%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .right-panel {
+            width: 65%;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        form {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 100%; /* Full width for form */
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        select, input[type="number"], input[type="submit"], input[type="button"] {
+            width: calc(100% - 16px);
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .results-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            width: 100%; /* Full width for results container */
+        }
+        .results-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: auto; /* Adjusted width for each result box */
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #007bff; /* Changed text color to blue */
+            margin-bottom: 10px;
+        }
+        .container {
+            display: flex;
+            justify-content: flex-start; /* Align buttons to the left */
             align-items: center;
             height: 100vh;
             margin: 0;
             background-color: #f0f0f0;
-        }
-        .container {
             text-align: center;
+            flex-direction: column;
+            width: 100%; /* Full width for container */
         }
         .button {
             padding: 10px 20px;
@@ -24,6 +111,10 @@
             border-radius: 5px;
             cursor: pointer;
             margin: 10px;
+            width: 80%; /* Adjusted button width */
+            box-sizing: border-box;
+            margin-top: 10px;
+            float: left;
         }
         .button:hover {
             background-color: #0056b3;
@@ -31,13 +122,215 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to the Data Analysis Portal</h1>
-        <button class="button" onclick="location.href='/analysis'">Location Based Analysis</button>
-        <button class="button" onclick="location.href='/analysis1'">Chart based Analysis</button>
-        <button class="button" onclick="location.href='/analysis2'">Number based Analysis</button>
-        <button class="button" onclick="location.href='/order_analysis'">Number based Analysis</button>
-    </div>
+    <header>
+        <h1>Data Analysis Portal</h1>
+    </header>
+    <main>
+        <div class="left-panel">
+            <div class="container">
+                <button class="button" onclick="location.href='/analysis'">Location Based Analysis</button>
+                <button class="button" onclick="location.href='/analysis1'">Chart based Analysis</button>
+                <button class="button" onclick="location.href='/analysis2'">Number based Analysis</button>
+                <button class="button" onclick="location.href='/order_analysis'">Order Analysis</button>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <form id="dataForm" action="/get_data" method="post">
+                <label for="category">Choose a Pizza Category:</label>
+                <select name="category" id="category">
+                    <option value="all">All</option>
+                    <option value="Margherita Pizza">Margherita Pizza</option>
+                    <option value="Pepperoni Pizza">Pepperoni Pizza</option>
+                    <option value="Hawaiian Pizza">Hawaiian Pizza</option>
+                    <option value="Meat Lover's Pizza">Meat Lover's Pizza</option>
+                    <option value="Veggie Pizza">Veggie Pizza</option>
+                    <option value="BBQ Chicken Pizza">BBQ Chicken Pizza</option>
+                    <option value="Buffalo Chicken Pizza">Buffalo Chicken Pizza</option>
+                    <option value="Sicilian Pizza">Sicilian Pizza</option>
+                    <option value="Oxtail Pizza">Oxtail Pizza</option>
+                </select>
+                <label for="start_year">Start Year:</label>
+                <input type="number" name="start_year" id="start_year">
+                <label for="end_year">End Year:</label>
+                <input type="number" name="end_year" id="end_year">
+                <input type="submit" value="Get Data">
+                <input type="button" value="Clear" onclick="clearForm()">
+            </form>
+
+            <div class="results-container">
+                <div class="results-box">
+                    <h2>Total Revenue</h2>
+                    <p>${{ total_revenue }}</p>
+                </div>
+                <div class="results-box">
+                    <h2>AVG Order</h2>
+                    <p>${{ average_order_value }}</p>
+                </div>
+                <div class="results-box">
+                    <h2>Total Orders</h2>
+                    <p>{{ total_orders }}</p>
+                </div>
+                <div class="results-box">
+                    <h2>Total Sales</h2>
+                    <p>${{ total_sales }}</p>
+                </div>
+            </div>
+
+            <div class="results-container">
+                <div class="results-box">
+                    <h2>Top 5 Stores by Revenue</h2>
+                    <canvas id="topStoresChart" width="400" height="400"></canvas>
+                </div>
+                <div class="results-box">
+                    <h2>Top 5 Selling Products</h2>
+                    <canvas id="topProductsChart" width="400" height="400"></canvas>
+                </div>
+            </div>
+
+            <div class="results-container">
+                <div class="results-box">
+                    <h2>Sales by Size</h2>
+                    <canvas id="salesBySizeChart" width="400" height="400"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        function createCharts() {
+            // Placeholder function for other charts
+        }
+
+        function clearForm() {
+            document.getElementById("dataForm").reset();
+        }
+
+        // Fetch and display the top stores and products
+        function fetchTopStores() {
+            fetch('/top_stores')
+                .then(response => response.json())
+                .then(data => {
+                    const storeLabels = data.map(store => `${store.city}, ${store.state}`);
+                    const storeRevenues = data.map(store => store.total_revenue);
+
+                    const ctx = document.getElementById('topStoresChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: storeLabels,
+                            datasets: [{
+                                label: 'Revenue',
+                                data: storeRevenues,
+                                backgroundColor: [
+                                    'rgba(255, 99, 132, 0.2)',
+                                    'rgba(54, 162, 235, 0.2)',
+                                    'rgba(255, 206, 86, 0.2)',
+                                    'rgba(75, 192, 192, 0.2)',
+                                    'rgba(153, 102, 255, 0.2)'
+                                ],
+                                borderColor: [
+                                    'rgba(255, 99, 132, 1)',
+                                    'rgba(54, 162, 235, 1)',
+                                                                    'rgba(255, 206, 86, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(153, 102, 255, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching top stores:', error));
+        }
+
+        function fetchTopProducts() {
+            fetch('/top_products')
+                .then(response => response.json())
+                .then(data => {
+                    const productLabels = data.map(product => product.product_name);
+                    const productOrders = data.map(product => product.total_orders);
+
+                    const ctx = document.getElementById('topProductsChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: productLabels,
+                            datasets: [{
+                                label: 'Orders',
+                                data: productOrders,
+                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                                borderColor: 'rgba(54, 162, 235, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            scales: {
+                                y: {
+                                    beginAtZero: true
+                                }
+                            }
+                        }
+                    });
+                })
+                .catch(error => console.error('Error fetching top products:', error));
+        }
+
+       function fetchSalesBySize() {
+        fetch('/sales_by_size')
+            .then(response => response.json())
+            .then(data => {
+                const sizes = data.map(item => item.size);
+                const salesData = data.map(item => item.total_sales);
+
+                const ctx = document.getElementById('salesBySizeChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: sizes,
+                        datasets: [{
+                            label: 'Sales by Size',
+                            data: salesData,
+                            backgroundColor: [
+                                'rgb(162,255,86)',
+                                'rgba(54,187,235,0.2)',
+                                'rgba(255, 206, 86, 0.2)',
+                                // Add more colors as needed
+                            ],
+                            borderColor: [
+                                'rgb(99,107,255)',
+                                'rgb(235,87,54)',
+                                'rgba(235,211,54,0.2)',
+                                // Add more colors as needed
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching sales by size:', error));
+    }
+
+    // Call fetchSalesBySize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchSalesBySize();
+    });
+
+        // Call createCharts on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            createCharts();
+            fetchTopStores();
+            fetchTopProducts();
+            fetchSalesBySize(); // Call the function to fetch and render sales by size chart
+        });
+    </script>
 </body>
 </html>
-
