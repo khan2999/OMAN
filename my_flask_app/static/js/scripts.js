@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const loadingSpinner = document.getElementById('loadingSpinner');
         const colorPalette = ['#2E86C1', '#28B463', '#E74C3C', '#F1C40F', '#9B59B6', '#F39C12', '#1ABC9C', '#D35400', '#7D3C98', '#34495E'];
 
+
         function showLoading() {
             loadingSpinner.style.display = 'block';
         }
@@ -54,7 +55,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
         function renderChart(chartData, chartLabels, chartType, title) {
+            const chartContainer = document.getElementById('chart');
             const chart = echarts.init(chartContainer);
+
             let option;
             if (chartType === 'bar') {
                 option = {
@@ -71,19 +74,45 @@ document.addEventListener('DOMContentLoaded', function () {
                             dataView: {readOnly: false}, restore: {}, saveAsImage: {}
                         }
                     }
-                }
+
+                };
             } else if (chartType === 'line') {
                 option = {
-                    title: {text: title, left: 'center', textStyle: {fontSize: 18, fontWeight: 'bold'}},
-                    tooltip: {trigger: 'axis'},
-                    xAxis: {type: 'category', boundaryGap: false, data: chartLabels},
-                    yAxis: {type: 'value'},
+                    title: {
+                        text: title,
+                        left: 'center',
+                        textStyle: {
+                            fontSize: 18,
+                            fontWeight: 'bold'
+                        }
+                    },
+                    color: ['#007bff', '#ff7f50', '#87cefa', '#da70d6', '#32cd32', '#6495ed', '#ff69b4', '#ba55d3', '#cd5c5c', '#ffa500'],
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    xAxis: {
+                        type: 'category',
+                        boundaryGap: false,
+                        data: chartLabels
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
                     series: [{
                         name: title,
                         type: 'line',
                         data: chartData,
-                        markPoint: {data: [{type: 'max', name: 'Max'}, {type: 'min', name: 'Min'}]},
-                        markLine: {data: [{type: 'average', name: 'Average'}]}
+                        markPoint: {
+                            data: [
+                                {type: 'max', name: 'Max'},
+                                {type: 'min', name: 'Min'}
+                            ]
+                        },
+                        markLine: {
+                            data: [
+                                {type: 'average', name: 'Average'}
+                            ]
+                        }
                     }],
                     toolbox: {
                         feature: {
@@ -92,46 +121,8 @@ document.addEventListener('DOMContentLoaded', function () {
                             saveAsImage: {}
                         }
                     }
-                };
-            } else if (chartType === 'bar' && title === 'Store Performance Comparison') {
-                const ctx = document.getElementById('chart-container-3').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: chartLabels,
-                        datasets: [{
-                            label: 'Total Sales',
-                            data: chartData.map(item => item.total_sales),
-                            backgroundColor: 'green',
-                            emphasis: {itemStyle: {color: 'green'}}
-                        }, {
-                            label: 'Number of Orders',
-                            data: chartData.map(item => item.num_orders),
-                            backgroundColor: 'blue',
-                            emphasis: {itemStyle: {color: 'blue'}}
-                        }, {
-                            label: 'Average Order Size',
-                            data: chartData.map(item => item.average_order_size),
-                            backgroundColor: 'red',
-                            emphasis: {itemStyle: {color: 'red'}}
-                        }]
-                    },
-                    options: {
-                        scales: {
-                            yAxes: [{
-                                ticks: {
-                                    beginAtZero: true
-                                }
-                            }]
-                        },
-                        title: {
-                            display: true,
-                            text: 'Store Performance Comparison'
-                        }
-                    }
-                });
+                }
             }
-
 
             chart.on('click', function (params) {
                 if (document.querySelector('.drill-down-button')) {
@@ -224,7 +215,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         case 'average_order_value':
                             chartLabels = ['Average Order Value'];
                             chartData = [data[0][0]];
-                            chartType = 'gauge';
+                            chartType = 'bar';
                             title = 'Average Order Value';
                             break;
                         case 'customer_growth':
@@ -232,47 +223,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             chartData = data.map(item => item[1]);
                             chartType = 'line';
                             title = 'Customer Growth';
-                            break;
-
-                        case 'sales_by_day_of_week':
-                            chartLabels = data.map(item => item[0]);
-                            chartData = data.map(item => item[1]);
-                            chartType = 'bar';
-                            title = 'Sales by Day of Week';
-                            break;
-                        case 'store_performance_by_category':
-                            const categories = [...new Set(data.map(item => item.category))];
-                            const storeLabels = [...new Set(data.map(item => item.storeID))];
-                            chartData = categories.map((category) => {
-                                return {
-                                    label: category,
-                                    data: storeLabels.map(store => {
-                                        const item = data.find(item => item.storeID === store && item.category === category);
-                                        return item ? item.total_sales : 0;
-                                    }),
-                                    backgroundColor: colorPalette[categories.indexOf(category) % colorPalette.length],
-                                };
-                            });
-                            chartLabels = storeLabels;
-                            chartType = 'bar';
-                            title = 'Store Performance by Category';
-                            break;
-                        case 'average_order_value_over_time':
-                            chartLabels = data.map(item => item[0]);
-                            chartData = data.map(item => item[1]);
-                            chartType = 'line';
-                            title = 'Average Order Value Over Time';
-                            break;
-                        case 'store_performance_comparison':
-                            chartLabels = data.map(item => item.storeID);
-                            chartData = data.map(item => ({
-                                name: item.storeID,
-                                total_sales: item.total_sales,
-                                num_orders: item.num_orders,
-                                average_order_size: item.average_order_size
-                            }));
-                            chartType = 'bar'; // Adjust chart type as per visualization needs
-                            title = 'Store Performance Comparison';
                             break;
                         default:
                             chartLabels = [];
@@ -286,6 +236,52 @@ document.addEventListener('DOMContentLoaded', function () {
                     hideLoading();
                 });
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            function captureChartAsImage() {
+                const chartContainer = document.getElementById('chart');
+                return html2canvas(chartContainer).then(canvas => {
+                    return canvas.toDataURL('image/png');
+                });
+            }
+
+            window.downloadChartAsPDF = function (chartName) {
+                captureChartAsImage().then(imageData => {
+                    fetch(`/download_chart_pdf`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            chart: chartName,
+                            image: imageData
+                        })
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.blob();
+                        })
+                        .then(blob => {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.style.display = 'none';
+                            a.href = url;
+                            a.download = `${chartName}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                        })
+                        .catch(error => console.error('Error downloading PDF:', error));
+                });
+            }
+
+            document.getElementById('downloadPdfButton').addEventListener('click', function () {
+                const chartName = document.getElementById('chartSelector').value;
+                window.downloadChartAsPDF(chartName);
+            });
+        });
 
 // Initialize and handle exit drill-down functionality
         const exitDrilldownButton = document.createElement('button');

@@ -6,6 +6,8 @@
     <title>Sales Analytics</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.4/dist/Chart.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -22,8 +24,13 @@
         .chart-container {
             position: relative;
             margin: auto;
-            height: 400px;
+            height: 200px; /* Default small chart height */
             width: 100%;
+            transition: height 0.3s ease-in-out; /* Smooth transition for height change */
+        }
+
+        .chart-container.large-chart {
+            height: 400px; /* Height for large chart */
         }
 
         .card {
@@ -45,6 +52,12 @@
             margin-bottom: 20px;
             color: #007bff;
         }
+
+        .reset-button {
+            display: none;
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -55,8 +68,11 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Sales by Day of Week</h5>
-                    <div class="chart-container">
+                    <div class="chart-container small-chart">
                         <canvas id="sales-by-day-of-week-chart"></canvas>
+                    </div>
+                    <div class="reset-button" id="reset-button">
+                        <button class="btn btn-primary" onclick="resetChart()">Reset Chart</button>
                     </div>
                 </div>
             </div>
@@ -65,7 +81,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Store Performance by Category</h5>
-                    <div class="chart-container">
+                    <div class="chart-container small-chart">
                         <canvas id="store-performance-by-category-chart"></canvas>
                     </div>
                 </div>
@@ -77,7 +93,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Average Order Value Over Time</h5>
-                    <div class="chart-container" style="height: 450px;"> <!-- Adjust height for line chart -->
+                    <div class="chart-container small-chart">
                         <canvas id="average-order-value-over-time-chart"></canvas>
                     </div>
                 </div>
@@ -87,7 +103,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Store Performance Comparison</h5>
-                    <div class="chart-container">
+                    <div class="chart-container small-chart">
                         <canvas id="store-performance-comparison-chart"></canvas>
                     </div>
                 </div>
@@ -99,7 +115,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Customer Segmentation</h5>
-                    <div class="chart-container">
+                    <div class="chart-container small-chart">
                         <canvas id="customer-segmentation-chart"></canvas>
                     </div>
                 </div>
@@ -109,7 +125,7 @@
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Inventory Turnover Rate</h5>
-                    <div class="chart-container">
+                    <div class="chart-container small-chart">
                         <canvas id="inventory-turnover-rate-chart"></canvas>
                     </div>
                 </div>
@@ -119,6 +135,184 @@
 </div>
 
 <script>
+    let salesByDayChart;
+    let originalData = [];
+
+    function fetchSalesByDayOfWeek() {
+        fetch('/api/sales_by_day_of_week')
+            .then(response => response.json())
+            .then(data => {
+                originalData = data; // Save original data for resetting
+                renderSalesByDayOfWeekChart(data);
+            })
+            .catch(error => console.error('Error fetching sales by day of week data:', error));
+    }
+
+    function renderSalesByDayOfWeekChart(data) {
+        const ctx = document.getElementById('sales-by-day-of-week-chart').getContext('2d');
+        const formattedData = data.map(item => ({
+            label: item.day_of_week,
+            value: item.total_sales
+        }));
+
+        salesByDayChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: formattedData.map(item => item.label),
+                datasets: [{
+                    label: 'Total Sales',
+                    data: formattedData.map(item => item.value),
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Sales by Day of Week'
+                },
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 1000, // Chart animation duration
+                },
+                tooltips: {
+                    callbacks: {
+                        label: function (tooltipItem, chartData) {
+                            var dataset = chartData.datasets[tooltipItem.datasetIndex];
+                            var value = dataset.data[tooltipItem.index];
+                            return 'Total Sales: ' + value.toLocaleString();
+                        }
+                    }
+                },
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+                            callback: function (value) {
+                                return value.toLocaleString();
+                            }
+                        }
+                    }]
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                },
+                elements: {
+                    point: {
+                        radius: 3,
+                        hitRadius: 10,
+                        hoverRadius: 5,
+                        hoverBorderWidth: 2
+                    }
+                },
+                onClick: function (evt, activeElements) {
+                    if (activeElements.length > 0) {
+                        const clickedElementIndex = activeElements[0]._index;
+                        const label = this.data.labels[clickedElementIndex];
+                        fetchFilteredSalesByDayOfWeek(label);
+                    }
+                }
+            }
+        });
+    }
+
+    function fetchFilteredSalesByDayOfWeek(dayOfWeek) {
+        fetch('/api/filter_sales_by_day_of_week', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ day_of_week: dayOfWeek })
+        })
+            .then(response => response.json())
+            .then(data => {
+                updateChart(data, dayOfWeek);
+            })
+            .catch(error => console.error('Error fetching filtered sales by day of week data:', error));
+    }
+
+    function updateChart(data, dayOfWeek) {
+        salesByDayChart.data.labels = [dayOfWeek];
+        salesByDayChart.data.datasets[0].data = [data.total_sales];
+        salesByDayChart.update();
+        document.getElementById('reset-button').style.display = 'block'; // Show the reset button
+    }
+
+    function resetChart() {
+        salesByDayChart.data.labels = originalData.map(item => item.day_of_week);
+        salesByDayChart.data.datasets[0].data = originalData.map(item => item.total_sales);
+        salesByDayChart.update();
+        document.getElementById('reset-button').style.display = 'none'; // Hide the reset button
+    }
+
+    // Fetch data from API endpoints and create charts
+    function initializeCharts() {
+        fetchSalesByDayOfWeek();
+
+        fetch('/api/store_performance_by_category')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: `${item.storeID} - ${item.Category}`,
+                    value: item.total_quantity_sold
+                }));
+                const ctx = document.getElementById('store-performance-by-category-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Store Performance by Category', 'Total Quantity Sold', 'rgba(54, 162, 235, 0.2)', 'rgba(54, 162, 235, 1)');
+            })
+            .catch(error => console.error('Error fetching store performance by category data:', error));
+
+        fetch('/api/average_order_value_over_time')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: item.week,
+                    value: item.average_order_value
+                }));
+                const ctx = document.getElementById('average-order-value-over-time-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Average Order Value Over Time', 'Average Order Value', 'rgba(255, 206, 86, 0.2)', 'rgba(255, 206, 86, 1)', 'line');
+            })
+            .catch(error => console.error('Error fetching average order value over time data:', error));
+
+        fetch('/api/store_performance_comparison')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: item.storeID,
+                    value: item.total_sales
+                }));
+                const ctx = document.getElementById('store-performance-comparison-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Store Performance Comparison', 'Total Sales', 'rgba(75, 192, 192, 0.2)', 'rgba(75, 192, 192, 1)');
+            })
+            .catch(error => console.error('Error fetching store performance comparison data:', error));
+
+        fetch('/api/customer_segmentation')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: `${item.city}, ${item.state}`,
+                    value: item.total_spend
+                }));
+                const ctx = document.getElementById('customer-segmentation-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Customer Segmentation', 'Total Spend', 'rgba(153, 102, 255, 0.2)', 'rgba(153, 102, 255, 1)');
+            })
+            .catch(error => console.error('Error fetching customer segmentation data:', error));
+
+        fetch('/api/inventory_turnover_rate')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: item.SKU,
+                    value: item.turnover_rate
+                }));
+                const ctx = document.getElementById('inventory-turnover-rate-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Inventory Turnover Rate', 'Turnover Rate', 'rgba(255, 159, 64, 0.2)', 'rgba(255, 159, 64, 1)');
+            })
+            .catch(error => console.error('Error fetching inventory turnover rate data:', error));
+    }
+
     // Function to create a chart
     function createChart(ctx, data, title, label, backgroundColor, borderColor, type = 'bar') {
         new Chart(ctx, {
@@ -140,10 +334,13 @@
                 },
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 1000, // Chart animation duration
+                },
                 tooltips: {
                     callbacks: {
-                        label: function (tooltipItem, chart) {
-                            var dataset = chart.datasets[tooltipItem.datasetIndex];
+                        label: function (tooltipItem, chartData) {
+                            var dataset = chartData.datasets[tooltipItem.datasetIndex];
                             var value = dataset.data[tooltipItem.index];
                             return label + ': ' + value.toLocaleString();
                         }
@@ -158,81 +355,31 @@
                             }
                         }
                     }]
+                },
+                hover: {
+                    mode: 'nearest',
+                    intersect: true
+                },
+                elements: {
+                    point: {
+                        radius: 3,
+                        hitRadius: 10,
+                        hoverRadius: 5,
+                        hoverBorderWidth: 2
+                    }
                 }
             }
         });
     }
 
-    // Fetch data from API endpoints
-    fetch('/api/sales_by_day_of_week')
-        .then(response => response.json())
-        .then(data => {
-            const ctx = document.getElementById('sales-by-day-of-week-chart').getContext('2d');
-            const formattedData = data.map(item => ({
-                label: item.day_of_week,
-                value: item.total_sales
-            }));
-            createChart(ctx, formattedData, 'Sales by Day of Week', 'Total Sales', 'rgba(255, 99, 132, 0.2)', 'rgba(255, 99, 132, 1)');
-        })
-        .catch(error => console.error('Error fetching sales by day of week data:', error));
+    // Click event to toggle chart size
+    $(".chart-container").click(function () {
+        $(".chart-container").removeClass("large-chart");
+        $(this).addClass("large-chart");
+    });
 
-    fetch('/api/store_performance_by_category')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Store Performance by Category Data:', data); // Debugging
-            const formattedData = data.map(item => ({
-                label: `${item.storeID} - ${item.Category}`,
-                value: item.total_quantity_sold
-            }));
-            const ctx = document.getElementById('store-performance-by-category-chart').getContext('2d');
-            createChart(ctx, formattedData, 'Store Performance by Category', 'Total Quantity Sold', 'rgba(54, 162, 235, 0.2)', 'rgba(54, 162, 235, 1)', 'horizontalBar');
-        })
-        .catch(error => console.error('Error fetching store performance by category data:', error));
-    fetch('/api/average_order_value_over_time')
-        .then(response => response.json())
-        .then(data => {
-            console.log('Average Order Value Over Time Data:', data); // Debugging
-            const formattedData = data.map(item => ({label: item.month, value: item.average_order_value}));
-            const ctx = document.getElementById('average-order-value-over-time-chart').getContext('2d');
-            createChart(ctx, formattedData, 'Average Order Value Over Time', 'Average Order Value', 'rgba(255, 206, 86, 0.2)', 'rgba(255, 206, 86, 1)', 'line');
-        })
-        .catch(error => console.error('Error fetching average order value over time data:', error));
-
-    fetch('/api/store_performance_comparison')
-        .then(response => response.json())
-        .then(data => {
-            const formattedData = data.map(item => ({
-                label: item.storeID,
-                value: item.total_sales
-            }));
-            const ctx = document.getElementById('store-performance-comparison-chart').getContext('2d');
-            createChart(ctx, formattedData, 'Store Performance Comparison', 'Total Sales', 'rgba(75, 192, 192, 0.2)', 'rgba(75, 192, 192, 1)');
-        })
-        .catch(error => console.error('Error fetching store performance comparison data:', error));
-
-    fetch('/api/customer_segmentation')
-        .then(response => response.json())
-        .then(data => {
-            const formattedData = data.map(item => ({
-                label: `${item.city}, ${item.state}`,
-                value: item.total_spend
-            }));
-            const ctx = document.getElementById('customer-segmentation-chart').getContext('2d');
-            createChart(ctx, formattedData, 'Customer Segmentation', 'Total Spend', 'rgba(153, 102, 255, 0.2)', 'rgba(153, 102, 255, 1)');
-        })
-        .catch(error => console.error('Error fetching customer segmentation data:', error));
-
-    fetch('/api/inventory_turnover_rate')
-        .then(response => response.json())
-        .then(data => {
-            const formattedData = data.map(item => ({
-                label: item.SKU,
-                value: item.turnover_rate
-            }));
-            const ctx = document.getElementById('inventory-turnover-rate-chart').getContext('2d');
-            createChart(ctx, formattedData, 'Inventory Turnover Rate', 'Turnover Rate', 'rgba(255, 159, 64, 0.2)', 'rgba(255, 159, 64, 1)');
-        })
-        .catch(error => console.error('Error fetching inventory turnover rate data:', error));
+    // Initialize charts
+    initializeCharts();
 </script>
 </body>
 </html>

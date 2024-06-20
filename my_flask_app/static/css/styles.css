@@ -1,3 +1,4 @@
+/* Reset and base styles */
 body {
     font-family: 'Arial', sans-serif;
     background-color: #f4f4f4;
@@ -15,12 +16,46 @@ h1 {
     margin: 20px 0;
 }
 
+/* Container styles */
+.container {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation buttons */
+.link-button {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.link-button a {
+    color: #fff;
+    background-color: #007bff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    transition: background-color 0.3s ease-in-out;
+}
+
+.link-button a:hover {
+    background-color: #0056b3;
+}
+
+/* Filter container */
 .filter-container {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     margin-bottom: 20px;
-    width: 100%;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
 }
 
 .filter {
@@ -32,15 +67,19 @@ h1 {
     flex: 1;
 }
 
+/* Chart container */
 #chartContainer {
     width: 100%;
-    height: 500px;
-    background-color: #fff;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 400px;
     position: relative;
 }
 
+#chart {
+    width: 100%;
+    height: 100%;
+}
+
+/* Spinner animation */
 .spinner {
     display: none;
     position: absolute;
@@ -64,62 +103,44 @@ h1 {
     }
 }
 
-.link-button {
+/* Download PDF button */
+.download-pdf-button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease-in-out;
     margin-top: 20px;
+}
+
+.download-pdf-button:hover {
+    background-color: #0056b3;
+}
+
+/* KPI card styles */
+.kpi {
+    background-color: #ffffff;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin: 20px;
     text-align: center;
 }
 
-.link-button a {
-    color: #fff;
-    background-color: #007bff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    text-decoration: none;
-    transition: background-color 0.3s ease-in-out;
+.kpi h3 {
+    color: #333;
+    margin: 0 0 10px 0;
 }
 
-.link-button a:hover {
-    background-color: #0056b3;
+.kpi p {
+    margin: 0;
+    font-size: 24px;
+    color: #007bff;
 }
 
-.chart-tooltip {
-    position: absolute;
-    background-color: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 5px;
-    border-radius: 5px;
-    pointer-events: none;
-    z-index: 9999;
-    font-size: 14px;
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.btn-primary {
-    background-color: #007bff;
-    border-color: #007bff;
-}
-
-.btn-primary:hover {
-    background-color: #0056b3;
-    border-color: #004085;
-}
-
-.btn-secondary {
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-.btn-secondary:hover {
-    background-color: #5a6268;
-    border-color: #545b62;
-}
-
-.dark-mode {
-    background-color: #343a40;
-    color: #ffffff;
-}
-
+/* Drill-down and exit drill-down buttons */
 .drill-down-button, .exit-drilldown-button {
     position: absolute;
     bottom: 10px;
@@ -146,22 +167,29 @@ h1 {
     background-color: #c82333;
 }
 
-.kpi {
-    background-color: #ffffff;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin: 20px;
-    text-align: center;
+/* Button styles */
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
 }
 
-.kpi h3 {
-    color: #333;
-    margin: 0 0 10px 0;
+.btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
 }
 
-.kpi p {
-    margin: 0;
-    font-size: 24px;
-    color: #007bff;
+.btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
+
+/* Dark mode */
+.dark-mode {
+    background-color: #343a40;
+    color: #ffffff;
 }

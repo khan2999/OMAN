@@ -3,142 +3,247 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KPI Reports</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.2.2/echarts.min.js"></script>
+    <title>KPI Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            background-color: #f4f4f9;
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
         }
 
-        nav {
-            background-color: #333;
-            color: #fff;
-            padding: 1em;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .container {
+            padding-top: 30px;
         }
 
-        nav .logo {
-            font-size: 1.5em;
-            font-weight: bold;
-        }
-
-        nav ul {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-        }
-
-        nav ul li {
-            margin-left: 1em;
-        }
-
-        nav ul li a {
-            color: #fff;
-            text-decoration: none;
-            font-weight: 700;
-        }
-
-        main {
-            padding: 2em;
-        }
-
-        .kpi-reports {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2em;
-        }
-
-        .kpi {
-            background-color: #fff;
+        .card {
+            border: none;
             border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding: 1em;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: #343a40;
+        }
+
+        canvas {
+            margin-top: 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 30px;
+            color: #343a40;
             text-align: center;
-        }
-
-        .kpi h3 {
-            margin-top: 0;
-            font-size: 1.2em;
-            color: #333;
-        }
-
-        .chart-container {
-            width: 100%;
-            height: 300px;
-        }
-
-        @media (max-width: 768px) {
-            .kpi-reports {
-                grid-template-columns: 1fr;
-            }
         }
     </style>
 </head>
 <body>
-<nav>
-    <div class="logo">kpi Reports</div>
-    <ul>
-        <li><a href="/">Home</a></li>
-    </ul>
-</nav>
-<main>
-    <section class="kpi-reports">
-        <div class="kpi" id="average_order_value_chart">
-            <h3>Average Order Value</h3>
-            <div class="chart-container"></div>
+<div class="container">
+    <h1 class="my-4 text-center">KPI Dashboard</h1>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Average Order Value</h5>
+                    <canvas id="avgOrderValueChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="kpi" id="customer_retention_rate_chart">
-            <h3>Customer Retention Rate</h3>
-            <div class="chart-container"></div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Customer Retention Rate</h5>
+                    <canvas id="customerRetentionChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="kpi" id="order_frequency_chart">
-            <h3>Order Frequency</h3>
-            <div class="chart-container"></div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Order Frequency</h5>
+                    <canvas id="orderFrequencyChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="kpi" id="conversion_rate_chart">
-            <h3>Conversion Rate</h3>
-            <div class="chart-container"></div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Conversion Rate</h5>
+                    <canvas id="conversionRateChart"></canvas>
+                </div>
+            </div>
         </div>
-        <div class="kpi" id="customer_segmentation_chart">
-            <h3>Customer Segmentation</h3>
-            <div class="chart-container"></div>
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Customer Segmentation</h5>
+                    <canvas id="customerSegmentationChart"></canvas>
+                </div>
+            </div>
         </div>
-    </section>
-</main>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        function renderKPIChart(elementId, kpiData) {
-            const chartContainer = document.getElementById(elementId).getElementsByClassName('chart-container')[0];
-            const kpiChart = echarts.init(chartContainer);
-            const option = {
-                series: [{
-                    type: 'gauge',
-                    detail: {formatter: '{value}%'},
-                    data: [{value: kpiData}]
-                }]
-            };
-            kpiChart.setOption(option);
-        }
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top Selling Products</h5>
+                    <canvas id="topSellingProductsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
+<script>
+    $(document).ready(function () {
         fetch('/kpi_data')
             .then(response => response.json())
             .then(data => {
-                renderKPIChart('average_order_value_chart', data.average_order_value);
-                renderKPIChart('customer_retention_rate_chart', data.customer_retention_rate);
-                renderKPIChart('order_frequency_chart', data.order_frequency);
-                renderKPIChart('conversion_rate_chart', data.conversion_rate);
-                // Commenting out customer segmentation for now
-                // renderKPIChart('customer_segmentation_chart', data.customer_segmentation);
+                renderCharts(data);
             })
             .catch(error => console.error('Error fetching KPI data:', error));
     });
+
+    function renderCharts(data) {
+        // Average Order Value Chart
+        new Chart(document.getElementById('avgOrderValueChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Average Order Value'],
+                datasets: [{
+                    label: 'Average Order Value',
+                    data: [data.average_order_value, 100 - data.average_order_value],
+                    backgroundColor: ['#FF6384', '#E0E0E0']
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Average Order Value'
+                }
+            }
+        });
+
+        // Customer Retention Rate Chart
+        new Chart(document.getElementById('customerRetentionChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Retention Rate'],
+                datasets: [{
+                    label: 'Customer Retention Rate',
+                    data: [data.customer_retention_rate, 100 - data.customer_retention_rate],
+                    backgroundColor: ['#36A2EB', '#E0E0E0']
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Customer Retention Rate'
+                }
+            }
+        });
+
+        // Order Frequency Chart
+        new Chart(document.getElementById('orderFrequencyChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Order Frequency'],
+                datasets: [{
+                    label: 'Order Frequency',
+                    data: [data.order_frequency],
+                    backgroundColor: ['#FFCE56']
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Order Frequency'
+                }
+            }
+        });
+
+        // Conversion Rate Chart
+        new Chart(document.getElementById('conversionRateChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Conversion Rate'],
+                datasets: [{
+                    label: 'Conversion Rate',
+                    data: [data.conversion_rate, 100 - data.conversion_rate],
+                    backgroundColor: ['#4BC0C0', '#E0E0E0']
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Conversion Rate'
+                }
+            }
+        });
+
+        // Customer Segmentation Chart
+// Customer Segmentation Chart
+        new Chart(document.getElementById('customerSegmentationChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: data.orders.reduce((acc, curr) => {
+                    const cityState = `${curr.store.city}, ${curr.store.state_abbr}`;
+                    if (!acc.includes(cityState)) {
+                        acc.push(cityState);
+                    }
+                    return acc;
+                }, []),
+                datasets: [{
+                    label: 'Total Spend',
+                    data: data.orders.reduce((acc, curr) => {
+                        const cityState = `${curr.store.city}, ${curr.store.state_abbr}`;
+                        const totalSpend = acc[cityState] || 0;
+                        acc[cityState] = totalSpend + curr.total;
+                        return acc;
+                    }, {}),
+                    backgroundColor: ['#9966FF', '#6699FF', '#66FF99', '#FF9966', '#99FF66', '#FF6699', '#66CCFF', '#CC66FF', '#FFCC66', '#66FFCC', '#CCFF66', '#FFFF99', '#FFFF66', '#99FFFF', '#66FFFF', '#FF66FF', '#FF99CC', '#99CCFF', '#CC99FF', '#FFCCCC']
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Customer Segmentation'
+                }
+            }
+        });
+
+// Top Selling Products Chart
+        new Chart(document.getElementById('topSellingProductsChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: data.top_selling_products.reduce((acc, curr) => {
+                    acc.push(curr.Name);
+                    return acc;
+                }, []).slice(0, 10), // Get top 10 products
+                datasets: [{
+                    label: 'Total Orders',
+                    data: data.top_selling_products.reduce((acc, curr) => {
+                        acc.push(curr.total_orders);
+                        return acc;
+                    }, []).slice(0, 10), // Get top 10 products
+                    backgroundColor: ['#FF9F40', '#66FF99', '#9966FF', '#6699FF', '#66FFCC', '#CC66FF', '#FFCC66', '#66CCFF', '#CCFF66', '#FFFF99'] // Assign different colors to each product
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Top Selling Products'
+                }
+            }
+        });
+    }
 </script>
 </body>
 </html>

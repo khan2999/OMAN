@@ -1,5 +1,8 @@
+import datetime
+import os
 import re
-from flask import render_template, request, jsonify, logging, send_file
+from fpdf import FPDF
+from flask import render_template, request, jsonify, logging, send_file, abort
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
 import mysql.connector
@@ -8,6 +11,14 @@ from decimal import Decimal
 import logging
 import plotly.graph_objects as go
 import plotly.io as pio
+
+# Database connection
+mydb = mysql.connector.connect(
+    host="127.0.0.1",
+    user="root",
+    passwd="DBml##%%98",
+    database="omanpl"
+)
 
 
 def execute_query(query, params=None):
@@ -143,45 +154,58 @@ ORDER BY total_sales DESC
 @app.route('/kpi_data', methods=['GET'])
 def kpi_data():
     kpis = {}
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    date_filter = ""
+    params = []
+
+    if start_date and end_date:
+        date_filter = "WHERE orderDate BETWEEN %s AND %s"
+        params = [start_date, end_date]
 
     # Average Order Value
-    avg_order_value_query = """
+    avg_order_value_query = f"""
         SELECT AVG(total) AS average_order_value
-        FROM orders;
+        FROM orders
+        {date_filter};
     """
-    avg_order_value = execute_query(avg_order_value_query)
+    avg_order_value = execute_query(avg_order_value_query, params)
     kpis['average_order_value'] = decimal_to_float(avg_order_value)
 
     # Customer Retention Rate
-    customer_retention_query = """
+    customer_retention_query = f"""
         SELECT ROUND((COUNT(DISTINCT customerID) - COUNT(DISTINCT CASE WHEN DATEDIFF(CURDATE(), orderDate) <= 30 THEN customerID ELSE NULL END)) / COUNT(DISTINCT customerID) * 100, 2) AS retention_rate
-        FROM orders;
+        FROM orders
+        {date_filter};
     """
-    customer_retention_rate = execute_query(customer_retention_query)
+    customer_retention_rate = execute_query(customer_retention_query, params)
     kpis['customer_retention_rate'] = decimal_to_float(customer_retention_rate)
 
     # Order Frequency
-    order_frequency_query = """
+    order_frequency_query = f"""
         SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
         FROM (
             SELECT customerID, COUNT(orderID) AS order_count
             FROM orders
+            {date_filter}
             GROUP BY customerID
         ) AS subquery;
     """
-    order_frequency = execute_query(order_frequency_query)
+    order_frequency = execute_query(order_frequency_query, params)
     kpis['order_frequency'] = decimal_to_float(order_frequency)
 
     # Conversion Rate
-    conversion_rate_query = """
+    conversion_rate_query = f"""
         SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
-        FROM orders;
+        FROM orders
+        {date_filter};
     """
-    conversion_rate = execute_query(conversion_rate_query)
+    conversion_rate = execute_query(conversion_rate_query, params)
     kpis['conversion_rate'] = decimal_to_float(conversion_rate)
 
     # Customer Segmentation
-    customer_segmentation_query = """
+    customer_segmentation_query = f"""
         SELECT 
             c.customerID, 
             SUM(o.total) AS total_spend, 
@@ -190,11 +214,27 @@ def kpi_data():
         FROM customers c
         JOIN orders o ON c.customerID = o.customerID
         JOIN stores s ON o.storeID = s.storeID
+        {date_filter}
         GROUP BY c.customerID, s.state_abbr
         ORDER BY total_spend DESC;
     """
-    customer_segmentation_data = execute_query(customer_segmentation_query)
-    kpis['customer_segmentation'] = customer_segmentation_data  # Return the entire dataset for customer segmentation
+    customer_segmentation_data = execute_query(customer_segmentation_query, params)
+    kpis['customer_segmentation'] = decimal_to_float(customer_segmentation_data)
+
+    # Top Selling Products
+    top_selling_products_query = f"""
+        SELECT
+            p.Name,
+            COUNT(oi.SKU) AS total_orders
+        FROM orderitems oi
+        JOIN products p ON oi.SKU = p.SKU
+        JOIN orders o ON oi.orderID = o.orderID
+        {date_filter}
+        GROUP BY p.Name
+        ORDER BY total_orders DESC;
+    """
+    top_selling_products_data = execute_query(top_selling_products_query, params)
+    kpis['top_selling_products'] = decimal_to_float(top_selling_products_data)
 
     return jsonify(kpis)
 
@@ -207,10 +247,7 @@ def kpi_reports():
         if '{filter_clause}' in query:
             query = query.format(filter_clause="")
         data = execute_query(query)
-        # Top Selling Products
-    top_selling_products_query = queries['top_selling_products']
-    top_selling_products_data = execute_query(top_selling_products_query)
-    kpi_data['top_selling_products'] = decimal_to_float(top_selling_products_data)
+        kpi_data[kpi] = decimal_to_float(data)
 
     return render_template('kpi_reports.html', kpi_data=json.dumps(kpi_data))
 
@@ -472,7 +509,7 @@ def inventory_turnover_rate():
             SUM(p.Price * o.nItems) AS total_revenue,
             SUM(o.nItems) AS turnover_rate
             FROM orderItems oi
-            JOIN products p ON oi.SKU = p.SKU
+            JOIN products p ON oi.SKU =p.SKU
             JOIN orders o ON oi.orderID = o.orderID
             GROUP BY p.SKU
             ORDER BY turnover_rate DESC;
@@ -487,6 +524,129 @@ def inventory_turnover_rate():
     except Exception as error:
         app.logger.error(f"An unexpected error occurred: {error}")
         return jsonify({"error": "Internal server error"}), 500
+
+
+# New API routes for interactive features
+@app.route('/api/filter_sales_by_day_of_week', methods=['POST'])
+def filter_sales_by_day_of_week():
+    try:
+        data = request.get_json()
+        day_of_week = data['day_of_week']
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT SUM(o.total) AS total_sales
+            FROM orders o
+            WHERE DAYNAME(o.orderDate) = %s;
+        ''', (day_of_week,))
+        data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return jsonify(data)
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching filtered sales by day of week data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+
+@app.route('/api/filter_store_performance_by_category', methods=['POST'])
+def filter_store_performance_by_category():
+    try:
+        data = request.get_json()
+        store_id = data['store_id']
+        category = data['category']
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+            SELECT SUM(o.nItems) AS total_quantity_sold
+            FROM orderItems oi 
+            JOIN products p ON oi.SKU = p.SKU 
+            JOIN orders o ON oi.orderID = o.orderID 
+            JOIN stores s ON o.storeID = s.storeID 
+            WHERE s.storeID = %s AND p.Category = %s;
+        ''', (store_id, category))
+        data = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return jsonify(data)
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching filtered store performance by category data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+
+# New API routes for analysis tool
+@app.route('/api/trend_analysis', methods=['POST'])
+def trend_analysis():
+    try:
+        data = request.get_json()
+        metric = data['metric']
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        if metric == 'ales':
+            cursor.execute('''
+                SELECT 
+                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
+                SUM(o.total) AS total_sales
+                FROM orders o
+                GROUP BY month
+                ORDER BY month;
+            ''')
+        elif metric == 'orders':
+            cursor.execute('''
+                SELECT 
+                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
+                COUNT(o.orderID) AS num_orders
+                FROM orders o
+                GROUP BY month
+                ORDER BY month;
+            ''')
+        data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(data)
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching trend analysis data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+
+@app.route('/api/forecast', methods=['POST'])
+def forecast():
+    try:
+        data = request.get_json()
+        metric = data['metric']
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        if metric == 'sales':
+            cursor.execute('''
+                SELECT 
+                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
+                SUM(o.total) AS total_sales
+                FROM orders o
+                GROUP BY month
+                ORDER BY month;
+            ''')
+        elif metric == 'orders':
+            cursor.execute('''
+                SELECT 
+                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
+                COUNT(o.orderID) AS num_orders
+                FROM orders o
+                GROUP BY month
+                ORDER BY month;
+            ''')
+        data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        # Perform forecasting using statistical methods (e.g., ARIMA, Prophet)
+        forecast_data = []
+        for i in range(3):  # Forecast for the next 3 months
+            forecast_data.append({
+                'Month': f"{datetime.date.today().year + (i // 12)}-{(i % 12) + 1:02d}",
+                'total_sales': 1000 + i * 100  # Example forecast values
+            })
+        return jsonify(forecast_data)
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching forecastdata: {error}")
+        return jsonify({"error": "Database error"}), 500
 
 
 @app.route('/drilldown_city', methods=['GET'])
