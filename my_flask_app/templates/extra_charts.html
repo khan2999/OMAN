@@ -24,13 +24,8 @@
         .chart-container {
             position: relative;
             margin: auto;
-            height: 200px; /* Default small chart height */
+            height: 400px; /* Fixed chart height */
             width: 100%;
-            transition: height 0.3s ease-in-out; /* Smooth transition for height change */
-        }
-
-        .chart-container.large-chart {
-            height: 400px; /* Height for large chart */
         }
 
         .card {
@@ -52,89 +47,68 @@
             margin-bottom: 20px;
             color: #007bff;
         }
-
-        .reset-button {
-            display: none;
-            margin-top: 20px;
-            text-align: center;
-        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Sales Analytics</h1>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Sales by Day of Week</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="sales-by-day-of-week-chart"></canvas>
-                    </div>
-                    <div class="reset-button" id="reset-button">
-                        <button class="btn btn-primary" onclick="resetChart()">Reset Chart</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Store Performance by Category</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="store-performance-by-category-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Average Order Value Over Time</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="average-order-value-over-time-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Store Performance Comparison</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="store-performance-comparison-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Customer Segmentation</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="customer-segmentation-chart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Inventory Turnover Rate</h5>
-                    <div class="chart-container small-chart">
-                        <canvas id="inventory-turnover-rate-chart"></canvas>
-                    </div>
-                </div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Select one or more charts to analyse</h5>
+                <label for="chart-selector"></label><select id="chart-selector" class="form-control" multiple>
+                <option value="sales-by-day-of-week-chart">Sales by Day of Week</option>
+                <option value="store-performance-by-category-chart">Store Performance by Category</option>
+                <option value="average-order-value-over-time-chart">Average Order Value Over Time</option>
+                <option value="store-performance-comparison-chart">Store Performance Comparison</option>
+                <option value="customer-segmentation-chart">Customer Segmentation</option>
+                <option value="distance-analysis-chart">Distance Analysis</option>
+                <option value="inventory-turnover-rate-chart">Inventory Turnover Rate</option>
+            </select>
+                <button id="show-chart-button" class="btn btn-primary">Show Charts</button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Chart containers -->
+<div class="chart-container" id="sales-by-day-of-week-chart-container" style="display: none;">
+    <canvas id="sales-by-day-of-week-chart"></canvas>
+</div>
+<div class="chart-container" id="store-performance-by-category-chart-container" style="display: none;">
+    <canvas id="store-performance-by-category-chart"></canvas>
+</div>
+<div class="chart-container" id="average-order-value-over-time-chart-container" style="display: none;">
+    <canvas id="average-order-value-over-time-chart"></canvas>
+</div>
+<div class="chart-container" id="store-performance-comparison-chart-container" style="display: none;">
+    <canvas id="store-performance-comparison-chart"></canvas>
+</div>
+<div class="chart-container" id="customer-segmentation-chart-container" style="display: none;">
+    <canvas id="customer-segmentation-chart"></canvas>
+</div>
+<div class="chart-container" id="distance-analysis-chart-container" style="display: none;">
+    <canvas id="distance-aov-chart"></canvas>
+    <canvas id="distance-frequency-chart"></canvas>
+    <canvas id="distance-sales-chart"></canvas>
+
+</div>
+<div class="chart-container" id="inventory-turnover-rate-chart-container" style="display: none;">
+    <canvas id="inventory-turnover-rate-chart"></canvas>
+</div>
+
 <script>
+    document.getElementById('show-chart-button').addEventListener('click', function () {
+        const selectedCharts = Array.from(document.getElementById('chart-selector').selectedOptions).map(option => option.value);
+        // Show only the selected charts
+        document.querySelectorAll('.chart-container').forEach(container => {
+            container.style.display = 'none'; // Hide all chart containers
+        });
+        selectedCharts.forEach(chartId => {
+            const chartContainer = document.getElementById(`${chartId}-container`);
+            chartContainer.style.display = 'block'; // Show the selected chart containers
+        });
+    });
+
     let salesByDayChart;
     let originalData = [];
 
@@ -207,45 +181,9 @@
                         hoverRadius: 5,
                         hoverBorderWidth: 2
                     }
-                },
-                onClick: function (evt, activeElements) {
-                    if (activeElements.length > 0) {
-                        const clickedElementIndex = activeElements[0]._index;
-                        const label = this.data.labels[clickedElementIndex];
-                        fetchFilteredSalesByDayOfWeek(label);
-                    }
                 }
             }
         });
-    }
-
-    function fetchFilteredSalesByDayOfWeek(dayOfWeek) {
-        fetch('/api/filter_sales_by_day_of_week', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ day_of_week: dayOfWeek })
-        })
-            .then(response => response.json())
-            .then(data => {
-                updateChart(data, dayOfWeek);
-            })
-            .catch(error => console.error('Error fetching filtered sales by day of week data:', error));
-    }
-
-    function updateChart(data, dayOfWeek) {
-        salesByDayChart.data.labels = [dayOfWeek];
-        salesByDayChart.data.datasets[0].data = [data.total_sales];
-        salesByDayChart.update();
-        document.getElementById('reset-button').style.display = 'block'; // Show the reset button
-    }
-
-    function resetChart() {
-        salesByDayChart.data.labels = originalData.map(item => item.day_of_week);
-        salesByDayChart.data.datasets[0].data = originalData.map(item => item.total_sales);
-        salesByDayChart.update();
-        document.getElementById('reset-button').style.display = 'none'; // Hide the reset button
     }
 
     // Fetch data from API endpoints and create charts
@@ -271,10 +209,25 @@
                     label: item.week,
                     value: item.average_order_value
                 }));
+
                 const ctx = document.getElementById('average-order-value-over-time-chart').getContext('2d');
                 createChart(ctx, formattedData, 'Average Order Value Over Time', 'Average Order Value', 'rgba(255, 206, 86, 0.2)', 'rgba(255, 206, 86, 1)', 'line');
             })
             .catch(error => console.error('Error fetching average order value over time data:', error));
+
+        fetch('/api/average_order_value_over_time')
+            .then(response => response.json())
+            .then(data => {
+                const formattedData = data.map(item => ({
+                    label: item.month, // changed from item.week to item.month
+                    value: item.average_order_value
+                }));
+
+                const ctx = document.getElementById('average-order-value-over-time-chart').getContext('2d');
+                createChart(ctx, formattedData, 'Average Order Value Over Time', 'Average Order Value', 'rgba(255, 206, 86, 0.2)', 'rgba(255, 206, 86, 1)', 'line');
+            })
+            .catch(error => console.error('Error fetching average order value over time data:', error));
+
 
         fetch('/api/store_performance_comparison')
             .then(response => response.json())
@@ -298,7 +251,129 @@
                 const ctx = document.getElementById('customer-segmentation-chart').getContext('2d');
                 createChart(ctx, formattedData, 'Customer Segmentation', 'Total Spend', 'rgba(153, 102, 255, 0.2)', 'rgba(153, 102, 255, 1)');
             })
-            .catch(error => console.error('Error fetching customer segmentation data:', error));
+        fetch('/api/distance_analysis')
+            .then(response => response.json())
+            .then(data => {
+                console.log("Received data:", data);  // Log the received data
+
+                const distanceBins = data.map(d => d.distance_bin);
+                const aovMeans = data.map(d => parseFloat(d.aov_mean.toFixed(2)));  // Format to 2 decimal places
+                const aovStds = data.map(d => parseFloat(d.aov_std.toFixed(2)));    // Format to 2 decimal places
+                const orderFrequencyMeans = data.map(d => parseFloat(d.order_frequency_mean.toFixed(2)));  // Format to 2 decimal places
+                const orderFrequencyStds = data.map(d => parseFloat(d.order_frequency_std.toFixed(2)));    // Format to 2 decimal places
+                const totalSalesMeans = data.map(d => parseFloat(d.total_sales_mean.toFixed(2)));  // Format to 2 decimal places
+                const totalSalesStds = data.map(d => parseFloat(d.total_sales_std.toFixed(2)));    // Format to 2 decimal places
+
+                // Scatter Plot 1: Distance vs. AOV
+                const ctx1 = document.getElementById('distance-aov-chart').getContext('2d');
+                new Chart(ctx1, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Distance vs. AOV',
+                            data: distanceBins.map((distance_bin, i) => ({
+                                x: parseInt(distance_bin.split('-')[0]),
+                                y: aovMeans[i],
+                                r: aovStds[i]
+                            })),
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            pointRadius: aovStds.map(std => std * 5)  // Scale point size by standard deviation
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {display: true, text: 'Distance from Store (km)'}
+                            },
+                            y: {
+                                title: {display: true, text: 'Average Order Value'}
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distance vs. Average Order Value'
+                            }
+                        }
+                    }
+                });
+
+                // Scatter Plot 2: Distance vs. Order Frequency
+                const ctx2 = document.getElementById('distance-frequency-chart').getContext('2d');
+                new Chart(ctx2, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Distance vs. Order Frequency',
+                            data: distanceBins.map((distance_bin, i) => ({
+                                x: parseInt(distance_bin.split('-')[0]),
+                                y: orderFrequencyMeans[i],
+                                r: orderFrequencyStds[i]
+                            })),
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1,
+                            pointRadius: orderFrequencyStds.map(std => std * 5)  // Scale point size by standard deviation
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {display: true, text: 'Distance from Store (km)'}
+                            },
+                            y: {
+                                title: {display: true, text: 'Order Frequency'}
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distance vs. Order Frequency'
+                            }
+                        }
+                    }
+                });
+
+                // Scatter Plot 3: Distance vs. Total Sales
+                const ctx3 = document.getElementById('distance-sales-chart').getContext('2d');
+                new Chart(ctx3, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Distance vs. Total Sales',
+                            data: distanceBins.map((distance_bin, i) => ({
+                                x: parseInt(distance_bin.split('-')[0]),
+                                y: totalSalesMeans[i],
+                                r: totalSalesStds[i]
+                            })),
+                         backgroundColor: 'rgba(75, 192, 192, 0.5)',  // Adjusted opacity for better visibility
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 1,
+                            pointRadius: totalSalesStds.map(std => std * 0.1)  // Scale point size by standard deviation
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {display: true, text: 'Distance from Store (km)'}
+                            },
+                            y: {
+                                title: {display: true, text: 'Total Sales'}
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Distance vs. Total Sales'
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching distance analysis data:', error));
+
 
         fetch('/api/inventory_turnover_rate')
             .then(response => response.json())
@@ -371,12 +446,6 @@
             }
         });
     }
-
-    // Click event to toggle chart size
-    $(".chart-container").click(function () {
-        $(".chart-container").removeClass("large-chart");
-        $(this).addClass("large-chart");
-    });
 
     // Initialize charts
     initializeCharts();

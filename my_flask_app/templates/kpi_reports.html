@@ -28,6 +28,14 @@
             padding: 20px;
         }
 
+        .table-container {
+            margin-top: 20px;
+        }
+
+        .table th, .table td {
+            text-align: center;
+        }
+
         .card-title {
             font-size: 1.25rem;
             margin-bottom: 20px;
@@ -74,6 +82,7 @@
                 </div>
             </div>
         </div>
+
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
@@ -82,19 +91,26 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Customer Segmentation</h5>
-                    <canvas id="customerSegmentationChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Top Selling Products</h5>
-                    <canvas id="topSellingProductsChart"></canvas>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Customer Segmentation</h5>
+                        <div class="table-container">
+                            <table class="table table-striped" id="customerSegmentationTable">
+                                <thead>
+                                <tr>
+                                    <th>Customer ID</th>
+                                    <th>Total Spend</th>
+                                    <th>Order Frequency</th>
+                                    <th>Average Order Value</th>
+                                    <th>State</th>
+                                </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -106,27 +122,47 @@
         fetch('/kpi_data')
             .then(response => response.json())
             .then(data => {
-                renderCharts(data);
+                renderCharts(data); // Render the simple bar charts
+                renderCustomerSegmentationTable(data.customer_segmentation); // Render the table
             })
             .catch(error => console.error('Error fetching KPI data:', error));
     });
 
     function renderCharts(data) {
+        function formatNumber(number) {
+            return number.toFixed(2); // Display with two decimal places
+        }
+
         // Average Order Value Chart
         new Chart(document.getElementById('avgOrderValueChart').getContext('2d'), {
             type: 'bar',
             data: {
                 labels: ['Average Order Value'],
                 datasets: [{
-                    label: 'Average Order Value',
-                    data: [data.average_order_value, 100 - data.average_order_value],
-                    backgroundColor: ['#FF6384', '#E0E0E0']
+                    label: 'Average Order Value ($)',
+                    data: [data.average_order_value],
+                    backgroundColor: ['#FF6384']
                 }]
             },
             options: {
-                title: {
-                    display: true,
-                    text: 'Average Order Value'
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.dataset.label || '';
+
+                                if (context.parsed !== null) {
+                                    label += ': $' + formatNumber(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
         });
@@ -135,17 +171,31 @@
         new Chart(document.getElementById('customerRetentionChart').getContext('2d'), {
             type: 'bar',
             data: {
-                labels: ['Retention Rate'],
+                labels: ['Customer Retention Rate'],
                 datasets: [{
-                    label: 'Customer Retention Rate',
-                    data: [data.customer_retention_rate, 100 - data.customer_retention_rate],
-                    backgroundColor: ['#36A2EB', '#E0E0E0']
+                    label: 'Retention Rate (%)',
+                    data: [data.customer_retention_rate],
+                    backgroundColor: ['#36A2EB']
                 }]
             },
             options: {
-                title: {
-                    display: true,
-                    text: 'Customer Retention Rate'
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.dataset.label || '';
+                                if (context.parsed !== null) {
+                                    label += ': ' + formatNumber(context.parsed) + '%';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
         });
@@ -162,9 +212,24 @@
                 }]
             },
             options: {
-                title: {
-                    display: true,
-                    text: 'Order Frequency'
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.dataset.label || '';
+
+                                if (context.parsed !== null) {
+                                    label += ': ' + formatNumber(context.parsed);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
         });
@@ -175,73 +240,48 @@
             data: {
                 labels: ['Conversion Rate'],
                 datasets: [{
-                    label: 'Conversion Rate',
-                    data: [data.conversion_rate, 100 - data.conversion_rate],
-                    backgroundColor: ['#4BC0C0', '#E0E0E0']
+                    label: 'Conversion Rate (%)',
+                    data: [data.conversion_rate],
+                    backgroundColor: ['#4BC0C0']
                 }]
             },
             options: {
-                title: {
-                    display: true,
-                    text: 'Conversion Rate'
-                }
-            }
-        });
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.dataset.label || '';
 
-        // Customer Segmentation Chart
-// Customer Segmentation Chart
-        new Chart(document.getElementById('customerSegmentationChart').getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: data.orders.reduce((acc, curr) => {
-                    const cityState = `${curr.store.city}, ${curr.store.state_abbr}`;
-                    if (!acc.includes(cityState)) {
-                        acc.push(cityState);
+                                if (context.parsed !== null) {
+                                    label += ': ' + formatNumber(context.parsed) + '%';
+                                }
+                                return label;
+                            }
+                        }
                     }
-                    return acc;
-                }, []),
-                datasets: [{
-                    label: 'Total Spend',
-                    data: data.orders.reduce((acc, curr) => {
-                        const cityState = `${curr.store.city}, ${curr.store.state_abbr}`;
-                        const totalSpend = acc[cityState] || 0;
-                        acc[cityState] = totalSpend + curr.total;
-                        return acc;
-                    }, {}),
-                    backgroundColor: ['#9966FF', '#6699FF', '#66FF99', '#FF9966', '#99FF66', '#FF6699', '#66CCFF', '#CC66FF', '#FFCC66', '#66FFCC', '#CCFF66', '#FFFF99', '#FFFF66', '#99FFFF', '#66FFFF', '#FF66FF', '#FF99CC', '#99CCFF', '#CC99FF', '#FFCCCC']
-                }]
-            },
-            options: {
-                title: {
-                    display: true,
-                    text: 'Customer Segmentation'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
         });
+    }
 
-// Top Selling Products Chart
-        new Chart(document.getElementById('topSellingProductsChart').getContext('2d'), {
-            type: 'doughnut',
-            data: {
-                labels: data.top_selling_products.reduce((acc, curr) => {
-                    acc.push(curr.Name);
-                    return acc;
-                }, []).slice(0, 10), // Get top 10 products
-                datasets: [{
-                    label: 'Total Orders',
-                    data: data.top_selling_products.reduce((acc, curr) => {
-                        acc.push(curr.total_orders);
-                        return acc;
-                    }, []).slice(0, 10), // Get top 10 products
-                    backgroundColor: ['#FF9F40', '#66FF99', '#9966FF', '#6699FF', '#66FFCC', '#CC66FF', '#FFCC66', '#66CCFF', '#CCFF66', '#FFFF99'] // Assign different colors to each product
-                }]
-            },
-            options: {
-                title: {
-                    display: true,
-                    text: 'Top Selling Products'
-                }
-            }
+    function renderCustomerSegmentationTable(data) {
+        const tableBody = $('#customerSegmentationTable tbody');
+        tableBody.empty(); // Clear any existing rows
+
+        data.forEach(row => {
+            const newRow = `<tr>
+                            <td>${row[0]}</td>
+                            <td>$${row[1].toFixed(2)}</td>
+                            <td>${row[2]}</td>
+                            <td>$${row[3].toFixed(2)}</td>
+                            <td>${row[4]}</td>
+                        </tr>`;
+            tableBody.append(newRow);
         });
     }
 </script>
