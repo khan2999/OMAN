@@ -23,7 +23,7 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        #main, #orderCountChart {
+        #main, #orderCountChart, #productChart {
             width: 45%;
             height: 400px;
             margin-top: 20px;
@@ -69,14 +69,12 @@
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
                 <option value="2022">2022</option>
-
             </select>
             <label for="endYear">End Year:</label>
             <select id="endYear" name="endYear">
                 <option value="2020">2020</option>
                 <option value="2021">2021</option>
                 <option value="2022">2022</option>
-
             </select>
             <button type="button" onclick="validateAndGenerateChart('pie')">Pie Chart</button>
             <button type="button" onclick="validateAndGenerateChart('bar')">Bar Chart</button>
@@ -84,6 +82,7 @@
         <div id="errorMessage">Error please correct your start year</div>
         <div id="main"></div>
         <div id="orderCountChart"></div>
+        <div id="productChart"></div>
     </div>
 
     <!-- Load echarts -->
@@ -91,6 +90,7 @@
     <script>
         let myChart;
         let orderCountChart;
+        let productChart;
 
         function validateAndGenerateChart(type) {
             const startYear = parseInt(document.getElementById('startYear').value);
@@ -100,6 +100,7 @@
                 document.getElementById('errorMessage').style.display = 'block';
                 document.getElementById('main').innerHTML = '';
                 document.getElementById('orderCountChart').innerHTML = '';
+                document.getElementById('productChart').innerHTML = '';
             } else {
                 document.getElementById('errorMessage').style.display = 'none';
                 generateChart(type);
@@ -125,6 +126,7 @@
             .then(data => {
                 var chartDom = document.getElementById('main');
                 var orderCountChartDom = document.getElementById('orderCountChart');
+                var productChartDom = document.getElementById('productChart');
 
                 if (myChart) {
                     myChart.dispose();
@@ -132,9 +134,13 @@
                 if (orderCountChart) {
                     orderCountChart.dispose();
                 }
+                if (productChart) {
+                    productChart.dispose();
+                }
 
                 myChart = echarts.init(chartDom);
                 orderCountChart = echarts.init(orderCountChartDom);
+                productChart = echarts.init(productChartDom);
 
                 var option, orderCountOption;
 
@@ -146,7 +152,7 @@
                         tooltip: {
                             trigger: 'item',
                             formatter: function(params) {
-                                return `${params.name}: ${params.value} (${params.percent}%)<br/>Orders: ${params.data.orders}`;
+                                return params.name + ': ' + params.value + ' (' + params.percent + '%)<br/>Orders: ' + params.data.orders;
                             }
                         },
                         legend: {
@@ -181,7 +187,7 @@
                         tooltip: {
                             trigger: 'item',
                             formatter: function(params) {
-                                return `${params.name}: ${params.value}`;
+                                return params.name + ': ' + params.value;
                             }
                         },
                         legend: {
@@ -286,8 +292,60 @@
 
                 myChart.setOption(option);
                 orderCountChart.setOption(orderCountOption);
+
+                orderCountChart.on('click', function(params) {
+                    fetchProductsForCategory(params.name);
+                });
             })
             .catch(error => console.error('Error fetching order analysis:', error));
+        }
+
+        function fetchProductsForCategory(category) {
+            const startYear = document.getElementById('startYear').value;
+            const endYear = document.getElementById('endYear').value;
+
+            fetch(`/products_for_category?category=${category}&startYear=${startYear}&endYear=${endYear}`)
+            .then(response => response.json())
+            .then(data => {
+                var productChartDom = document.getElementById('productChart');
+
+                if (productChart) {
+                    productChart.dispose();
+                }
+
+                productChart = echarts.init(productChartDom);
+
+                var productOption = {
+                    title: {
+                        text: `Products ordered by ${category}`
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{a} <br/>{b}: {c} ({d}%)'
+                    },
+                    series: [
+                        {
+                            name: 'Products',
+                            type: 'pie',
+                            radius: '50%',
+                            data: data.map(product => ({
+                                value: product.count,
+                                name: product.Name
+                            })),
+                            emphasis: {
+                                itemStyle: {
+                                    shadowBlur: 10,
+                                    shadowOffsetX: 0,
+                                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                                }
+                            }
+                        }
+                    ]
+                };
+
+                productChart.setOption(productOption);
+            })
+            .catch(error => console.error('Error fetching products for category:', error));
         }
     </script>
 </body>
