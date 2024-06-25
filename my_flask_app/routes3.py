@@ -7,11 +7,12 @@ from my_flask_app import app
 logging.basicConfig(level=logging.DEBUG)
 
 # Database connection
-mydb = mysql.connector.connect(
-    host="127.0.0.1",
-    user="root",
-    passwd="password",
-    database="pizza"
+
+mydb= mysql.connector.connect(
+            host="localhost",
+            user="root",
+            passwd="Password00123",
+            database="test"
 )
 
 
