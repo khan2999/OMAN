@@ -187,4 +187,5 @@ def get_customer_counts(storeID):
         ) AS yearly_customers
     """
     customer_counts = execute_query(query, (storeID,))
+    print(f"Customer counts for store {storeID}: {customer_counts}")  # Debugging
     return jsonify(customer_counts if customer_counts else {"error": "Error fetching customer counts data"})
