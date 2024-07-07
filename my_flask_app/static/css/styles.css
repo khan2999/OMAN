@@ -5,9 +5,9 @@ body {
     margin: 0;
     padding: 20px;
     box-sizing: border-box;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
 }
 
 h1 {
@@ -16,33 +16,24 @@ h1 {
     margin: 20px 0;
 }
 
+/* Navbar styles */
+.navbar {
+    margin-bottom: 20px;
+}
+
+.navbar-brand {
+    font-size: 24px;
+    font-weight: bold;
+}
+
 /* Container styles */
 .container {
     max-width: 1200px;
-    margin: 40px auto;
+    margin: 0 auto;
     padding: 20px;
     background-color: #fff;
     border: 1px solid #ddd;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-/* Navigation buttons */
-.link-button {
-    margin-top: 20px;
-    text-align: center;
-}
-
-.link-button a {
-    color: #fff;
-    background-color: #007bff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    text-decoration: none;
-    transition: background-color 0.3s ease-in-out;
-}
-
-.link-button a:hover {
-    background-color: #0056b3;
 }
 
 /* Filter container */
@@ -67,10 +58,11 @@ h1 {
     flex: 1;
 }
 
-/* Chart container */
 #chartContainer {
-    width: 100%;
-    height: 400px;
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     position: relative;
 }
 
@@ -79,19 +71,12 @@ h1 {
     height: 100%;
 }
 
-/* Spinner animation */
 .spinner {
-    display: none;
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    border: 4px solid rgba(0, 0, 0, 0.1);
-    border-radius: 50%;
-    border-top: 4px solid #333;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
+    display: none;
 }
 
 @keyframes spin {
@@ -101,43 +86,6 @@ h1 {
     100% {
         transform: rotate(360deg);
     }
-}
-
-/* Download PDF button */
-.download-pdf-button {
-    background-color: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: background-color 0.3s ease-in-out;
-    margin-top: 20px;
-}
-
-.download-pdf-button:hover {
-    background-color: #0056b3;
-}
-
-/* KPI card styles */
-.kpi {
-    background-color: #ffffff;
-    border-radius: 5px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    padding: 20px;
-    margin: 20px;
-    text-align: center;
-}
-
-.kpi h3 {
-    color: #333;
-    margin: 0 0 10px 0;
-}
-
-.kpi p {
-    margin: 0;
-    font-size: 24px;
-    color: #007bff;
 }
 
 /* Drill-down and exit drill-down buttons */
@@ -192,4 +140,23 @@ h1 {
 .dark-mode {
     background-color: #343a40;
     color: #ffffff;
+}
+
+.dark-mode .container {
+    background-color: #444;
+    color: #ffffff;
+}
+
+.dark-mode .navbar {
+    background-color: #555;
+    color: #ffffff;
+}
+
+.dark-mode .navbar-brand, .dark-mode .nav-link {
+    color: #ffffff;
+}
+
+.dark-mode .btn-secondary {
+    background-color: #4b4b4b;
+    border-color: #4b4b4b;
 }

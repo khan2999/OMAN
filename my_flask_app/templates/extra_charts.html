@@ -24,7 +24,7 @@
         .chart-container {
             position: relative;
             margin: auto;
-            height: 400px; /* Fixed chart height */
+            height: 400px;
             width: 100%;
         }
 
@@ -47,53 +47,60 @@
             margin-bottom: 20px;
             color: #007bff;
         }
+
+        .btn-refresh {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
+<h1>Sales Analytics Dashboard</h1>
 <div class="row">
     <div class="col-md-12">
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Select one or more charts to analyse</h5>
-                <label for="chart-selector"></label><select id="chart-selector" class="form-control" multiple>
-                <option value="sales-by-day-of-week-chart">Sales by Day of Week</option>
-                <option value="store-performance-by-category-chart">Store Performance by Category</option>
-                <option value="average-order-value-over-time-chart">Average Order Value Over Time</option>
-                <option value="store-performance-comparison-chart">Store Performance Comparison</option>
-                <option value="customer-segmentation-chart">Customer Segmentation</option>
-                <option value="distance-analysis-chart">Distance Analysis</option>
-                <option value="inventory-turnover-rate-chart">Inventory Turnover Rate</option>
-            </select>
-                <button id="show-chart-button" class="btn btn-primary">Show Charts</button>
+                <label for="chart-selector"></label>
+                <select id="chart-selector" class="form-control" multiple>
+                    <option value="sales-by-day-of-week-chart">Sales by Day of Week</option>
+                    <option value="store-performance-by-category-chart">Store Performance by Category</option>
+                    <option value="average-order-value-over-time-chart">Average Order Value Over Time</option>
+                    <option value="store-performance-comparison-chart">Store Performance Comparison</option>
+                    <option value="customer-segmentation-chart">Customer Segmentation</option>
+                    <option value="distance-analysis-chart">Distance Analysis</option>
+                    <option value="inventory-turnover-rate-chart">Inventory Turnover Rate</option>
+                </select>
+                <button id="show-chart-button" class="btn btn-primary btn-refresh">Show Charts</button>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Chart containers -->
-<div class="chart-container" id="sales-by-day-of-week-chart-container" style="display: none;">
-    <canvas id="sales-by-day-of-week-chart"></canvas>
-</div>
-<div class="chart-container" id="store-performance-by-category-chart-container" style="display: none;">
-    <canvas id="store-performance-by-category-chart"></canvas>
-</div>
-<div class="chart-container" id="average-order-value-over-time-chart-container" style="display: none;">
-    <canvas id="average-order-value-over-time-chart"></canvas>
-</div>
-<div class="chart-container" id="store-performance-comparison-chart-container" style="display: none;">
-    <canvas id="store-performance-comparison-chart"></canvas>
-</div>
-<div class="chart-container" id="customer-segmentation-chart-container" style="display: none;">
-    <canvas id="customer-segmentation-chart"></canvas>
-</div>
-<div class="chart-container" id="distance-analysis-chart-container" style="display: none;">
-    <canvas id="distance-aov-chart"></canvas>
-    <canvas id="distance-frequency-chart"></canvas>
-    <canvas id="distance-sales-chart"></canvas>
-
-</div>
-<div class="chart-container" id="inventory-turnover-rate-chart-container" style="display: none;">
-    <canvas id="inventory-turnover-rate-chart"></canvas>
+<div class="row">
+    <div class="col-md-6 chart-container" id="sales-by-day-of-week-chart-container" style="display: none;">
+        <canvas id="sales-by-day-of-week-chart"></canvas>
+    </div>
+    <div class="col-md-6 chart-container" id="store-performance-by-category-chart-container" style="display: none;">
+        <canvas id="store-performance-by-category-chart"></canvas>
+    </div>
+    <div class="col-md-6 chart-container" id="average-order-value-over-time-chart-container" style="display: none;">
+        <canvas id="average-order-value-over-time-chart"></canvas>
+    </div>
+    <div class="col-md-6 chart-container" id="store-performance-comparison-chart-container" style="display: none;">
+        <canvas id="store-performance-comparison-chart"></canvas>
+    </div>
+    <div class="col-md-6 chart-container" id="customer-segmentation-chart-container" style="display: none;">
+        <canvas id="customer-segmentation-chart"></canvas>
+    </div>
+    <div class="col-md-12 chart-container" id="distance-analysis-chart-container" style="display: none;">
+        <canvas id="distance-aov-chart"></canvas>
+        <canvas id="distance-frequency-chart"></canvas>
+        <canvas id="distance-sales-chart"></canvas>
+    </div>
+    <div class="col-md-6 chart-container" id="inventory-turnover-rate-chart-container" style="display: none;">
+        <canvas id="inventory-turnover-rate-chart"></canvas>
+    </div>
 </div>
 
 <script>
@@ -206,19 +213,6 @@
             .then(response => response.json())
             .then(data => {
                 const formattedData = data.map(item => ({
-                    label: item.week,
-                    value: item.average_order_value
-                }));
-
-                const ctx = document.getElementById('average-order-value-over-time-chart').getContext('2d');
-                createChart(ctx, formattedData, 'Average Order Value Over Time', 'Average Order Value', 'rgba(255, 206, 86, 0.2)', 'rgba(255, 206, 86, 1)', 'line');
-            })
-            .catch(error => console.error('Error fetching average order value over time data:', error));
-
-        fetch('/api/average_order_value_over_time')
-            .then(response => response.json())
-            .then(data => {
-                const formattedData = data.map(item => ({
                     label: item.month, // changed from item.week to item.month
                     value: item.average_order_value
                 }));
@@ -240,6 +234,52 @@
                 createChart(ctx, formattedData, 'Store Performance Comparison', 'Total Sales', 'rgba(75, 192, 192, 0.2)', 'rgba(75, 192, 192, 1)');
             })
             .catch(error => console.error('Error fetching store performance comparison data:', error));
+
+        // Fetch data from API endpoints and create charts
+        fetch('/api/product_size_sales')
+            .then(response => response.json())
+            .then(data => {
+                const labels = data.map(row => row.Size);
+                const quantities = data.map(row => row.total_quantity_sold);
+
+                const ctx = document.getElementById('product-size-sales-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: quantities,
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(255, 206, 86, 0.2)',
+                                'rgba(178,43,234,0.25)'
+                                // ... add more colors for different sizes
+                            ],
+                            borderColor: [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgb(86,255,235)'
+                                // ...
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            title: {
+                                display: true,
+                                text: 'Product Size Sales'
+                            }
+                        }
+                    }
+                });
+            });
 
         fetch('/api/customer_segmentation')
             .then(response => response.json())
@@ -348,8 +388,8 @@
                                 y: totalSalesMeans[i],
                                 r: totalSalesStds[i]
                             })),
-                         backgroundColor: 'rgba(75, 192, 192, 0.5)',  // Adjusted opacity for better visibility
-                    borderColor: 'rgba(75, 192, 192, 1)',
+                            backgroundColor: 'rgba(75, 192, 192, 0.5)',  // Adjusted opacity for better visibility
+                            borderColor: 'rgba(75, 192, 192, 1)',
                             borderWidth: 1,
                             pointRadius: totalSalesStds.map(std => std * 0.1)  // Scale point size by standard deviation
                         }]

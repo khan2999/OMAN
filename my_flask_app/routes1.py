@@ -4,13 +4,11 @@ import re
 import sqlite3
 from decimal import Decimal
 from math import radians, cos, sin, asin, sqrt
-
 import mysql.connector
 import plotly.graph_objects as go
 import plotly.io as pio
 from flask import jsonify
 from flask import render_template, request, send_file
-
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
 
@@ -42,19 +40,24 @@ def execute_query(query, params=None):
 def decimal_to_float(data):
     if data is None:
         return []
-    return [[round(float(item), 2) if isinstance(item, Decimal) else item for item in row] for row in data]
+    if isinstance(data, list):
+        return [[round(float(item), 2) if isinstance(item, Decimal) else item for item in row] for row in data]
+    elif isinstance(data, Decimal):
+        return float(data)
+    return data
+
 
 
 queries = {
     'total_sales_by_category': """
-                SELECT p.Category, SUM(p.Price * o.nItems) AS total_sales
-                FROM orderItems oi
-                JOIN products p ON oi.SKU = p.SKU
-                JOIN orders o ON oi.orderID = o.orderID
-                JOIN stores s ON o.storeID = s.storeID
-                {filter_clause}
-                GROUP BY p.Category;
-    """,
+                  SELECT p.Category, SUM(p.Price * o.nItems) AS total_sales
+                  FROM orderItems oi
+                  JOIN products p ON oi.SKU = p.SKU
+                  JOIN orders o ON oi.orderID = o.orderID
+                  JOIN stores s ON o.storeID = s.storeID
+                  {filter_clause}
+                  GROUP BY p.Category;
+      """,
 
     'sales_trends_over_time': """
             SELECT YEAR(orderDate) AS year, MONTH(orderDate) AS month, SUM(total) AS total_sales
@@ -113,43 +116,12 @@ queries = {
             JOIN stores s ON o.storeID = s.storeID
             {filter_clause};
         """,
-    'sales_by_day_of_week': """SELECT DAYNAME(o.orderDate) AS day_of_week, SUM(o.total) AS total_sales
-FROM orders o
-GROUP BY DAYNAME(o.orderDate)
-ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday')
-{filter_clause}; 
-""",
-    'store_performance_by_category': """
-SELECT s.storeID, p.Category, 
-SUM(o.nItems) AS total_quantity_sold
-FROM orderItems oi 
-JOIN products p ON oi.SKU = p.SKU 
-JOIN orders o ON oi.orderID = o.orderID 
-JOIN stores s ON o.storeID = s.storeID 
-GROUP BY s.storeID, p.Category 
-ORDER BY s.storeID, total_quantity_sold DESC
-{filter_clause}; 
+    'product_details': """
+    SELECT p.SKU, p.Name, p.Price, p.Category, p.Size, p.Ingredients, p.Launch
+    FROM products p
+    {filter_clause}
     """,
-    'average_order_value_over_time': """
-  SELECT 
- DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
- AVG(o.total) AS average_order_value
-FROM orders o
-GROUP BY month
-ORDER BY month;
-{filter_clause}; 
-""",
-    'store_performance_comparison': """
-    SELECT s.storeID,
-SUM(o.total) AS total_sales,
-COUNT(o.orderID) AS num_orders,
-AVG(o.total) AS average_order_size
-FROM orders o
-JOIN stores s ON o.storeID = s.storeID
-GROUP BY s.storeID
-ORDER BY total_sales DESC
-{filter_clause}; 
-    """
+
 }
 
 
@@ -172,34 +144,24 @@ def kpi_data():
            FROM orders o
            {date_filter}
        """
-    avg_order_value = execute_query(avg_order_value_query, params)[0][0]  # Extract value directly
+    avg_order_value = execute_query(avg_order_value_query, params)[0][0]
     kpis['average_order_value'] = avg_order_value if avg_order_value is not None else 0
 
-    # Customer Retention Rate (30-day rolling)
-    customer_retention_query = f"""
-            WITH recent_orders AS (
-                SELECT DISTINCT customerID 
-                FROM orders
-                WHERE orderDate BETWEEN DATE_SUB(%s, INTERVAL 30 DAY) AND %s
-            ),
-            previous_orders AS (
-                SELECT DISTINCT customerID
-                FROM orders
-                WHERE orderDate BETWEEN DATE_SUB(%s, INTERVAL 60 DAY) AND DATE_SUB(%s, INTERVAL 30 DAY)
-            )
-            SELECT 
-                ROUND(
-                    (
-                        COUNT(DISTINCT ro.customerID) /
-                        COUNT(DISTINCT po.customerID) 
-                    ) * 100, 2
-                ) AS retention_rate
-            FROM recent_orders ro
-            RIGHT JOIN previous_orders po ON ro.customerID = po.customerID
-        """
-    retention_params = [end_date, end_date, end_date, end_date]  # Repeat params for both periods
-    customer_retention_rate = execute_query(customer_retention_query, retention_params)[0][0]
-    kpis['customer_retention_rate'] = customer_retention_rate if customer_retention_rate is not None else 0
+    top_stores_by_revenue_query = f"""
+      SELECT s.storeID, s.city, SUM(o.total) AS total_revenue
+      FROM orders o 
+      JOIN stores s ON o.storeID = s.storeID
+      {date_filter}
+      GROUP BY s.storeID, s.city
+      ORDER BY total_revenue DESC
+      LIMIT 10;
+    """
+    top_stores_by_revenue = execute_query(top_stores_by_revenue_query, params)
+    kpis['top_stores_by_revenue'] = decimal_to_float(top_stores_by_revenue)
+
+    # Debugging: Print the top stores by revenue
+    print(f"Top Stores by Revenue: {kpis['top_stores_by_revenue']}")
+
     # Order Frequency
     order_frequency_query = f"""
         SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
@@ -215,45 +177,12 @@ def kpi_data():
 
     # Conversion Rate
     conversion_rate_query = f"""
-        SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
-        FROM orders
+        SELECT ROUND((COUNT(o.orderID) / COUNT(DISTINCT o.customerID)) * 100, 2) AS conversion_rate
+        FROM orders o
         {date_filter};
     """
     conversion_rate = execute_query(conversion_rate_query, params)
     kpis['conversion_rate'] = decimal_to_float(conversion_rate)
-
-    # Customer Segmentation (include average order value)
-    customer_segmentation_query = f"""
-            SELECT 
-                c.customerID, 
-                SUM(o.total) AS total_spend, 
-                COUNT(o.orderID) AS order_frequency, 
-                AVG(o.total) AS avg_order_value,
-                s.state_abbr AS state
-            FROM customers c
-            JOIN orders o ON c.customerID = o.customerID
-            JOIN stores s ON o.storeID = s.storeID
-            {date_filter}
-            GROUP BY c.customerID, s.state_abbr
-            ORDER BY total_spend DESC;
-        """
-    customer_segmentation_data = execute_query(customer_segmentation_query, params)
-    kpis['customer_segmentation'] = customer_segmentation_data
-
-    # Top Selling Products
-    top_selling_products_query = f"""
-        SELECT
-            p.Name,
-            COUNT(oi.SKU) AS total_orders
-        FROM orderitems oi
-        JOIN products p ON oi.SKU = p.SKU
-        JOIN orders o ON oi.orderID = o.orderID
-        {date_filter}
-        GROUP BY p.Name
-        ORDER BY total_orders DESC;
-    """
-    top_selling_products_data = execute_query(top_selling_products_query, params)
-    kpis['top_selling_products'] = decimal_to_float(top_selling_products_data)
 
     return jsonify(kpis)
 
@@ -261,6 +190,38 @@ def kpi_data():
 @app.route('/kpi_reports', methods=['GET', 'POST'])
 def kpi_reports():
     kpi_data = {}
+
+    queries = {
+        "average_order_value": "SELECT AVG(o.total) AS average_order_value FROM orders o",
+        "top_stores_by_revenue": """
+                   SELECT 
+  s.storeID, 
+  s.city, 
+  SUM(o.total) AS total_revenue
+FROM 
+  orders o 
+  JOIN stores s ON o.storeID = s.storeID
+GROUP BY 
+  s.storeID, 
+  s.city
+ORDER BY 
+  total_revenue DESC
+LIMIT 10;
+                """,
+
+        "order_frequency": """
+            SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
+            FROM (
+                SELECT customerID, COUNT(orderID) AS order_count
+                FROM orders
+                GROUP BY customerID
+            ) AS subquery;
+        """,
+        "conversion_rate": """
+            SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
+            FROM orders;
+        """
+    }
 
     for kpi, query in queries.items():
         if '{filter_clause}' in query:
@@ -280,10 +241,20 @@ def fetch_chart_data():
         data = execute_query(query)
         chart_data[chart] = decimal_to_float(data)
 
-        # Generate chart as PDF
+        # Generate chart as PDF for top_selling_products and other charts
         if chart == 'top_selling_products':
             fig = go.Figure(data=go.Bar(x=[item[0] for item in data], y=[item[1] for item in data]))
             pio.write_image(fig, 'top_selling_products.pdf')
+
+        elif chart == 'sales_trends_over_time':
+            fig = go.Figure(data=go.Scatter(x=[f"{item[0]}-{item[1]}" for item in data], y=[item[2] for item in data]))
+            pio.write_image(fig, 'sales_trends_over_time.pdf')
+
+        elif chart == 'customer_distribution':
+            fig = go.Figure(data=go.Pie(labels=[item[0] for item in data], values=[item[1] for item in data]))
+            pio.write_image(fig, 'customer_distribution.pdf')
+
+        # Add other chart types as needed
 
     return chart_data
 
@@ -297,13 +268,6 @@ def analysis1_page():
         charts_data[chart] = decimal_to_float(data)
 
     return render_template('melle.html', charts_data=json.dumps(charts_data))
-
-
-@app.route('/download_chart_pdf', methods=['GET'])
-def download_chart_pdf():
-    chart = request.args.get('chart')
-    file_path = f'{chart}.pdf'
-    return send_file(file_path, as_attachment=True)
 
 
 @app.route('/states', methods=['GET'])
@@ -377,22 +341,6 @@ def filter_data():
         return jsonify({"error": "Internal server error"}), 500
 
 
-@app.route('/drilldown', methods=['GET'])
-def drilldown_data():
-    category = request.args.get('category')
-    query = """
-            SELECT p.Name, SUM(o.nItems) AS total_quantity_sold
-            FROM orderItems oi
-            JOIN products p ON oi.SKU = p.SKU
-            JOIN orders o ON oi.orderID = o.orderID
-            WHERE p.Category = %s
-            GROUP BY p.Name
-            ORDER BY total_quantity_sold DESC;
-        """
-    data = execute_query(query, (category,))
-    return jsonify(decimal_to_float(data))
-
-
 @app.route('/charts')
 def charts_page():
     return render_template('extra_charts.html')
@@ -416,6 +364,27 @@ def sales_by_day_of_week():
         return jsonify(data)
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching sales by day of week data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+
+@app.route('/api/product_size_sales')
+def product_size_sales():
+    try:
+        conn = get_db_connection()  # Replace with your DB connection function
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute('''
+           SELECT p.Size, SUM(o.nItems) AS total_quantity_sold 
+            FROM Orders o
+            JOIN OrderItems oi ON o.orderID = oi.orderID 
+            JOIN Products p ON oi.SKU = p.SKU
+            GROUP BY p.Size;
+        ''')
+        data = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return jsonify(data)
+    except mysql.connector.Error as error:  # Adjust error handling to your connector
+        app.logger.error(f"Error fetching product size sales data: {error}")
         return jsonify({"error": "Database error"}), 500
 
 
@@ -659,12 +628,18 @@ def filter_sales_by_day_of_week():
         return jsonify({"error": "Database error"}), 500
 
 
-@app.route('/api/filter_store_performance_by_category', methods=['POST'])
+@app.route('/api/filter_store_performance_by_category', methods=['GET', 'POST'])
 def filter_store_performance_by_category():
     try:
-        data = request.get_json()
-        store_id = data.get('store_id')
-        category = data.get('category')
+        # For GET requests, use request.args. For POST requests, use request.get_json()
+        if request.method == 'POST':
+            data = request.get_json()
+            store_id = data.get('store_id')
+            category = data.get('category')
+        else:  # GET request
+            store_id = request.args.get('store_id')
+            category = request.args.get('category')
+
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         query = '''
@@ -673,7 +648,7 @@ def filter_store_performance_by_category():
             FROM orderItems oi 
             JOIN products p ON oi.SKU = p.SKU 
             JOIN orders o ON oi.orderID = o.orderID 
-            JOIN stores s ON o.storeID = s.storeID 
+            JOIN stores s ON o.storeID = s.storeID
             WHERE 1=1
         '''
         params = []
@@ -683,7 +658,8 @@ def filter_store_performance_by_category():
         if category:
             query += ' AND p.Category = %s'
             params.append(category)
-        query += ' GROUP BY s.storeID, p.Category ORDER BY total_quantity_sold DESC'
+        query += ' GROUP BY s.storeID, p.Category ORDER BY total_quantity_sold DESC;'
+
         cursor.execute(query, params)
         data = cursor.fetchall()
         cursor.close()
@@ -692,6 +668,9 @@ def filter_store_performance_by_category():
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching filtered store performance by category data: {error}")
         return jsonify({"error": "Database error"}), 500
+    except Exception as error:
+        app.logger.error(f"An unexpected error occurred: {error}")
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route('/api/filter_average_order_value_over_time', methods=['POST'])

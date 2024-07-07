@@ -28,12 +28,8 @@
             padding: 20px;
         }
 
-        .table-container {
-            margin-top: 20px;
-        }
-
-        .table th, .table td {
-            text-align: center;
+        #productLaunchPerformanceChart {
+            height: 300px; /* Adjust height as needed */
         }
 
         .card-title {
@@ -42,15 +38,15 @@
             color: #343a40;
         }
 
-        canvas {
-            margin-top: 20px;
-        }
-
         h1 {
             font-size: 2.5rem;
             margin-bottom: 30px;
             color: #343a40;
             text-align: center;
+        }
+
+        canvas {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -61,16 +57,8 @@
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Average Order Value</h5>
+                    <h5 class="card-title">Average Order Value ($)</h5>
                     <canvas id="avgOrderValueChart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Customer Retention Rate</h5>
-                    <canvas id="customerRetentionChart"></canvas>
                 </div>
             </div>
         </div>
@@ -82,208 +70,124 @@
                 </div>
             </div>
         </div>
-
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Conversion Rate</h5>
+                    <h5 class="card-title">Conversion Rate (%)</h5>
                     <canvas id="conversionRateChart"></canvas>
                 </div>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Customer Segmentation</h5>
-                        <div class="table-container">
-                            <table class="table table-striped" id="customerSegmentationTable">
-                                <thead>
-                                <tr>
-                                    <th>Customer ID</th>
-                                    <th>Total Spend</th>
-                                    <th>Order Frequency</th>
-                                    <th>Average Order Value</th>
-                                    <th>State</th>
-                                </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Top-Performing Stores by Total Revenue</h5>
+                    <canvas id="topStoresByRevenueChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 </div>
+</div>
 
 <script>
     $(document).ready(function () {
-        fetch('/kpi_data')
+        const urlParams = new URLSearchParams(window.location.search);
+        const startDate = urlParams.get('start_date') || '';
+        const endDate = urlParams.get('end_date') || '';
+
+        let url = '/kpi_data';
+        if (startDate && endDate) {
+            url += `?start_date=${startDate}&end_date=${endDate}`;
+        }
+        function formatNumberWithCommas(number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+        fetch(url)
             .then(response => response.json())
             .then(data => {
-                renderCharts(data); // Render the simple bar charts
-                renderCustomerSegmentationTable(data.customer_segmentation); // Render the table
+                console.log(data);  // Log the fetched data
+                renderCharts(data);
             })
             .catch(error => console.error('Error fetching KPI data:', error));
     });
 
     function renderCharts(data) {
-        function formatNumber(number) {
-            return number.toFixed(2); // Display with two decimal places
-        }
-
-        // Average Order Value Chart
-        new Chart(document.getElementById('avgOrderValueChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['Average Order Value'],
-                datasets: [{
-                    label: 'Average Order Value ($)',
-                    data: [data.average_order_value],
-                    backgroundColor: ['#FF6384']
-                }]
+        const chartConfigs = [
+            {
+                elementId: 'avgOrderValueChart',
+                label: 'Average Order Value ($)',
+                data: [data.average_order_value],
+                backgroundColor: ['#FF6384']
             },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.dataset.label || '';
+            {
+                elementId: 'topStoresByRevenueChart',
+                label: 'Top-Performing Stores by Total Revenue',
+                data: data.top_stores_by_revenue.map(store => store[2]), // Adjusted to store[2] for total_revenue
+                labels: data.top_stores_by_revenue.map(store => store[1]), // Adjusted to store[1] for city
+                backgroundColor: ['#8BC34A'],
+                type: 'bar'
+            },
+            {
+                elementId: 'orderFrequencyChart',
+                label: 'Order Frequency',
+                data: [data.order_frequency],
+                backgroundColor: ['#FFCE56']
+            },
+            {
+                elementId: 'conversionRateChart',
+                label: 'Conversion Rate (%)',
+                data: [data.conversion_rate],
+                backgroundColor: ['#4BC0C0']
+            }
+        ];
 
-                                if (context.parsed !== null) {
-                                    label += ': $' + formatNumber(context.parsed);
+        // Create Chart.js instances
+        chartConfigs.forEach(config => {
+            const chart = new Chart(document.getElementById(config.elementId), {
+                type: config.type || 'bar',
+                data: {
+                    labels: config.labels || [config.label],
+                    datasets: [{
+                        label: config.label,
+                        data: config.data,
+                        backgroundColor: config.backgroundColor,
+                        borderColor: config.borderColor || config.backgroundColor,
+                        fill: config.fill !== undefined ? config.fill : true
+                    }]
+                },
+                options: {
+                    plugins: {
+                        tooltip: {
+                            enabled: true,
+                            callbacks: {
+                                label: function (context) {
+                                    let label = context.dataset.label || '';
+                                    let value = context.parsed.y !== null ? context.parsed.y : '';
+                                    if (label.includes('%')) {
+                                        value = value.toFixed(2) + '%';
+                                    } else {
+                                        value = '$' + value.toFixed(2);
+                                    }
+                                    if (config.elementId === 'productLaunchPerformanceChart') {
+                                        const launchDate = context.label;
+                                        return `${label}: ${value} (Launch Date: ${launchDate})`;
+                                    } else {
+                                        return `${label}: ${value}`;
+                                    }
                                 }
-                                return label;
                             }
                         }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
+                    },
                 }
-            }
-        });
+            });
 
-        // Customer Retention Rate Chart
-        new Chart(document.getElementById('customerRetentionChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['Customer Retention Rate'],
-                datasets: [{
-                    label: 'Retention Rate (%)',
-                    data: [data.customer_retention_rate],
-                    backgroundColor: ['#36A2EB']
-                }]
-            },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.dataset.label || '';
-                                if (context.parsed !== null) {
-                                    label += ': ' + formatNumber(context.parsed) + '%';
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Order Frequency Chart
-        new Chart(document.getElementById('orderFrequencyChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['Order Frequency'],
-                datasets: [{
-                    label: 'Order Frequency',
-                    data: [data.order_frequency],
-                    backgroundColor: ['#FFCE56']
-                }]
-            },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.dataset.label || '';
-
-                                if (context.parsed !== null) {
-                                    label += ': ' + formatNumber(context.parsed);
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-
-        // Conversion Rate Chart
-        new Chart(document.getElementById('conversionRateChart').getContext('2d'), {
-            type: 'bar',
-            data: {
-                labels: ['Conversion Rate'],
-                datasets: [{
-                    label: 'Conversion Rate (%)',
-                    data: [data.conversion_rate],
-                    backgroundColor: ['#4BC0C0']
-                }]
-            },
-            options: {
-                plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function (context) {
-                                let label = context.dataset.label || '';
-
-                                if (context.parsed !== null) {
-                                    label += ': ' + formatNumber(context.parsed) + '%';
-                                }
-                                return label;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
+            chart.update();
         });
     }
 
-    function renderCustomerSegmentationTable(data) {
-        const tableBody = $('#customerSegmentationTable tbody');
-        tableBody.empty(); // Clear any existing rows
-
-        data.forEach(row => {
-            const newRow = `<tr>
-                            <td>${row[0]}</td>
-                            <td>$${row[1].toFixed(2)}</td>
-                            <td>${row[2]}</td>
-                            <td>$${row[3].toFixed(2)}</td>
-                            <td>${row[4]}</td>
-                        </tr>`;
-            tableBody.append(newRow);
-        });
-    }
 </script>
+
 </body>
 </html>
