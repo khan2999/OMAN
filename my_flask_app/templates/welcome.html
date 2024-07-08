@@ -4,23 +4,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Data Analysis Portal</title>
-    <link rel="stylesheet" href="style.css">
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            height: 100vh; /* Adjusted for full viewport height */
             margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
+            color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
         }
+
         header {
-            background-color: #007bff; /* Changed background color to blue */
-            color: #fff;
-            padding: 10px 0;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
             text-align: center;
-            margin-bottom: 20px;
             width: 100%;
             box-sizing: border-box;
             position: fixed;
@@ -28,309 +30,594 @@
             left: 0;
             z-index: 1000;
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
             align-items: center;
-            height: 50px; /* Adjust as needed */
         }
+
+        h1 {
+            flex: 1;
+            text-align: center;
+            margin: 0;
+            font-size: 35px;
+        }
+
+        .time-buttons {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-right: 20px;
+        }
+
+        .time-buttons button {
+            padding: 10px 20px;
+            margin-left: 10px;
+            font-size: 16px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .time-buttons button:hover {
+            background-color: #333;
+        }
+
         main {
             width: 80%;
-            margin-top: 70px; /* Adjust based on header height */
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        .left-panel {
-            width: 30%;
-            padding: 20px;
-            box-sizing: border-box;
+            margin-top: 80px;
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
         }
-        .right-panel {
-            width: 65%;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-        form {
-            background: #fff;
-            padding: 20px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 100%; /* Full width for form */
-            margin-bottom: 20px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-        }
-        select, input[type="number"], input[type="submit"], input[type="button"] {
-            width: calc(100% - 16px);
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+
         .results-container {
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
-            width: 100%; /* Full width for results container */
+            width: 90%;
+            margin-top: 5px;
         }
+
         .results-box {
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: auto; /* Adjusted width for each result box */
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 4px;
+            width: 24%; /* Adjusted width for results boxes */
             box-sizing: border-box;
-            margin-bottom: 20px;
+            margin-bottom: 10px; /* Increased margin for better separation */
+            color: white;
+            text-align: center;
         }
+
         h2 {
-            color: #007bff; /* Changed text color to blue */
+            color: #FFD700;
             margin-bottom: 10px;
         }
-        .container {
-            display: flex;
-            justify-content: flex-start; /* Align buttons to the left */
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-            text-align: center;
-            flex-direction: column;
-            width: 100%; /* Full width for container */
-        }
-        .button {
-            padding: 10px 20px;
-            font-size: 16px;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px;
-            width: 80%; /* Adjusted button width */
+
+        .chart-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 4px;
+            width: 100%; /* Full width for chart boxes */
             box-sizing: border-box;
-            margin-top: 10px;
-            float: left;
+            margin-bottom: 20px;
+            color: white;
+            text-align: center;
         }
-        .button:hover {
-            background-color: #0056b3;
+
+       .charts-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 20px; /* Increased margin between chart rows */
+}
+
+.half-chart-box {
+    width: calc(50% - 10px); /* Adjusted width for half-sized chart boxes */
+    margin-right: 10px; /* Added margin between chart boxes */
+}
+
+.chart-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 300px; /* Adjusted height for chart containers */
+}
+
+.chart {
+    max-width: 100%; /* Ensure the chart respects its container width */
+    max-height: 100%; /* Ensure the chart respects its container height */
+}
+
+        .menu {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            cursor: pointer;
+            z-index: 1001;
+        }
+
+        .menu-bar {
+            width: 35px;
+            height: 5px;
+            background-color: white;
+            margin: 6px 0;
+        }
+
+        .sidebar {
+            height: 100%;
+            width: 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.9);
+            overflow-x: hidden;
+            transition: 0.5s;
+            padding-top: 60px;
+        }
+
+        .sidebar a {
+            padding: 8px 8px 8px 32px;
+            text-decoration: none;
+            font-size: 25px;
+            color: white;
+            display: block;
+            transition: 0.3s;
+        }
+
+        .sidebar a:hover {
+            color: orange;
+        }
+
+        .closebtn {
+            position: absolute;
+            top: 0;
+            right: 25px;
+            font-size: 36px;
+            margin-left: 50px;
         }
     </style>
 </head>
 <body>
     <header>
         <h1>Data Analysis Portal</h1>
+
+        <div class="time-buttons">
+            <button onclick="getData('last_year');">Year</button>
+            <button onclick="getData('last_month');">Month</button>
+            <button onclick="getData('last_week');">7 Days</button>
+        </div>
     </header>
+
+    <div class="menu" onclick="toggleNav()">
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+        <div class="menu-bar"></div>
+    </div>
+
+    <div id="mySidebar" class="sidebar">
+        <a href="javascript:void(0)" class="closebtn" onclick="toggleNav()">&times;</a>
+        <a href="/analysis">Location Based Analysis</a>
+        <a href="/analysis1">Chart based Analysis</a>
+        <a href="/analysis2">Number based Analysis</a>
+        <a href="/order_analysis">Order based Analysis</a>
+    </div>
+
     <main>
-        <div class="left-panel">
-            <div class="container">
-                <button class="button" onclick="location.href='/analysis'">Location Based Analysis</button>
-                <button class="button" onclick="location.href='/analysis1'">Chart based Analysis</button>
-                <button class="button" onclick="location.href='/analysis2'">Number based Analysis</button>
-                <button class="button" onclick="location.href='/order_analysis'">Order Analysis</button>
+        <div class="results-container">
+            <div class="results-box">
+                <h2>Total Revenue</h2>
+                <p id="totalRevenue">{{ total_revenue }}</p>
+            </div>
+            <div class="results-box">
+                <h2>AVG Order</h2>
+                <p id="averageOrderValue">{{ average_order_value }}</p>
+            </div>
+            <div class="results-box">
+                <h2>Total Orders</h2>
+                <p id="totalOrders">{{ total_orders }}</p>
+            </div>
+            <div class="results-box">
+                <h2>Total Sales</h2>
+                <p id="totalSales">{{ total_sales }}</p>
             </div>
         </div>
 
-        <div class="right-panel">
-            <form id="dataForm" action="/get_data" method="post">
-                <label for="category">Choose a Pizza Category:</label>
-                <select name="category" id="category">
-                    <option value="all">All</option>
-                    <option value="Margherita Pizza">Margherita Pizza</option>
-                    <option value="Pepperoni Pizza">Pepperoni Pizza</option>
-                    <option value="Hawaiian Pizza">Hawaiian Pizza</option>
-                    <option value="Meat Lover's Pizza">Meat Lover's Pizza</option>
-                    <option value="Veggie Pizza">Veggie Pizza</option>
-                    <option value="BBQ Chicken Pizza">BBQ Chicken Pizza</option>
-                    <option value="Buffalo Chicken Pizza">Buffalo Chicken Pizza</option>
-                    <option value="Sicilian Pizza">Sicilian Pizza</option>
-                    <option value="Oxtail Pizza">Oxtail Pizza</option>
-                </select>
-                <label for="start_year">Start Year:</label>
-                <input type="number" name="start_year" id="start_year">
-                <label for="end_year">End Year:</label>
-                <input type="number" name="end_year" id="end_year">
-                <input type="submit" value="Get Data">
-                <input type="button" value="Clear" onclick="clearForm()">
-            </form>
-
-            <div class="results-container">
-                <div class="results-box">
-                    <h2>Total Revenue</h2>
-                    <p>${{ total_revenue }}</p>
-                </div>
-                <div class="results-box">
-                    <h2>AVG Order</h2>
-                    <p>${{ average_order_value }}</p>
-                </div>
-                <div class="results-box">
-                    <h2>Total Orders</h2>
-                    <p>{{ total_orders }}</p>
-                </div>
-                <div class="results-box">
-                    <h2>Total Sales</h2>
-                    <p>${{ total_sales }}</p>
-                </div>
+        <div class="chart-box">
+            <h2>Income Timeline</h2>
+            <div class="chart-container">
+                <canvas id="incomeTimelineChart" class="chart"></canvas>
             </div>
+        </div>
 
-            <div class="results-container">
-                <div class="results-box">
-                    <h2>Top 5 Stores by Revenue</h2>
-                    <canvas id="topStoresChart" width="400" height="400"></canvas>
-                </div>
-                <div class="results-box">
-                    <h2>Top 5 Selling Products</h2>
-                    <canvas id="topProductsChart" width="400" height="400"></canvas>
-                </div>
-            </div>
-
-            <div class="results-container">
-                <div class="results-box">
-                    <h2>Sales by Size</h2>
-                    <canvas id="salesBySizeChart" width="400" height="400"></canvas>
+        <div class="charts-row">
+        <div class="half-chart-box">
+            <div class="chart-box">
+                <h2>Top Stores by Income</h2>
+                <div class="chart-container">
+                    <canvas id="topStoresChart" class="chart"></canvas>
                 </div>
             </div>
         </div>
-    </main>
+        <div class="half-chart-box">
+            <div class="chart-box">
+                <h2>Pizza Size Frequency</h2>
+                <div class="chart-container">
+                    <canvas id="orderSizeChart" class="chart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="half-chart-box">
+            <div class="chart-box">
+                <h2>Customer Types</h2>
+                <div class="chart-container">
+                    <canvas id="customerTypesChart" class="chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        function createCharts() {
-            // Placeholder function for other charts
-        }
+    let topStoresChart;
+    let orderSizeChart;
+    let incomeTimelineChart;
+    let customerTypesChart;
 
-        function clearForm() {
-            document.getElementById("dataForm").reset();
-        }
+   function getData(period) {
 
-        // Fetch and display the top stores and products
-        function fetchTopStores() {
-            fetch('/top_stores')
-                .then(response => response.json())
-                .then(data => {
-                    const storeLabels = data.map(store => `${store.city}, ${store.state}`);
-                    const storeRevenues = data.map(store => store.total_revenue);
 
-                    const ctx = document.getElementById('topStoresChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'pie',
-                        data: {
-                            labels: storeLabels,
-                            datasets: [{
-                                label: 'Revenue',
-                                data: storeRevenues,
-                                backgroundColor: [
-                                    'rgba(255, 99, 132, 0.2)',
-                                    'rgba(54, 162, 235, 0.2)',
-                                    'rgba(255, 206, 86, 0.2)',
-                                    'rgba(75, 192, 192, 0.2)',
-                                    'rgba(153, 102, 255, 0.2)'
-                                ],
-                                borderColor: [
-                                    'rgba(255, 99, 132, 1)',
-                                    'rgba(54, 162, 235, 1)',
-                                                                    'rgba(255, 206, 86, 1)',
-                                    'rgba(75, 192, 192, 1)',
-                                    'rgba(153, 102, 255, 1)'
-                                ],
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true
-                        }
-                    });
-                })
-                .catch(error => console.error('Error fetching top stores:', error));
-        }
+    fetch('/get_data', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ period: period})
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateBoxes(data);
+        updateTopStoresChart(period);
+        updateOrderSizeChart(period);
+        updateIncomeTimelineChart(period);
+        updateCustomerTypesChart(period); // Call the new function to update customer types chart
+    })
+    .catch(error => {
+        console.error('Error fetching data:', error);
+    });
+}
 
-        function fetchTopProducts() {
-            fetch('/top_products')
-                .then(response => response.json())
-                .then(data => {
-                    const productLabels = data.map(product => product.product_name);
-                    const productOrders = data.map(product => product.total_orders);
-
-                    const ctx = document.getElementById('topProductsChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: productLabels,
-                            datasets: [{
-                                label: 'Orders',
-                                data: productOrders,
-                                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                                borderColor: 'rgba(54, 162, 235, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            scales: {
-                                y: {
-                                    beginAtZero: true
-                                }
-                            }
-                        }
-                    });
-                })
-                .catch(error => console.error('Error fetching top products:', error));
-        }
-
-       function fetchSalesBySize() {
-        fetch('/sales_by_size')
-            .then(response => response.json())
-            .then(data => {
-                const sizes = data.map(item => item.size);
-                const salesData = data.map(item => item.total_sales);
-
-                const ctx = document.getElementById('salesBySizeChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'pie',
-                    data: {
-                        labels: sizes,
-                        datasets: [{
-                            label: 'Sales by Size',
-                            data: salesData,
-                            backgroundColor: [
-                                'rgb(162,255,86)',
-                                'rgba(54,187,235,0.2)',
-                                'rgba(255, 206, 86, 0.2)',
-                                // Add more colors as needed
-                            ],
-                            borderColor: [
-                                'rgb(99,107,255)',
-                                'rgb(235,87,54)',
-                                'rgba(235,211,54,0.2)',
-                                // Add more colors as needed
-                            ],
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true
-                    }
-                });
-            })
-            .catch(error => console.error('Error fetching sales by size:', error));
+    function updateBoxes(data) {
+        document.getElementById('totalRevenue').textContent = `$${formatNumber(data.total_revenue)}`;
+        document.getElementById('averageOrderValue').textContent = `$${formatNumber(data.average_order_value)}`;
+        document.getElementById('totalOrders').textContent = formatNumber(data.total_orders);
+        document.getElementById('totalSales').textContent = formatNumber(data.total_sales);
     }
 
-    // Call fetchSalesBySize on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        fetchSalesBySize();
-    });
-
-        // Call createCharts on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            createCharts();
-            fetchTopStores();
-            fetchTopProducts();
-            fetchSalesBySize(); // Call the function to fetch and render sales by size chart
+    function formatNumber(number) {
+        return parseFloat(number).toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
         });
+    }
+
+    function updateTopStoresChart(period) {
+        fetch('/top_stores', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ period: period })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (topStoresChart) {
+                topStoresChart.destroy();
+            }
+            const labels = data.top_stores.map(store => store.city);
+            const values = data.top_stores.map(store => store.total_income);
+            const ctx = document.getElementById('topStoresChart').getContext('2d');
+            topStoresChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Top Stores by Income',
+                        data: values,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: 'white' // X-axis labels color
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: 'white' // Y-axis labels color
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white' // Legend labels color
+                            }
+                        },
+                        tooltip: {
+                            titleColor: 'white', // Tooltip title color
+                            bodyColor: 'white' // Tooltip body color
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching top stores data:', error);
+        });
+    }
+
+    function updateOrderSizeChart(period) {
+        fetch('/order_size_data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ period: period })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (orderSizeChart) {
+                orderSizeChart.destroy();
+            }
+            const labels = data.order_sizes.map(size => size.order_size);
+            const values = data.order_sizes.map(size => size.count);
+            const ctx = document.getElementById('orderSizeChart').getContext('2d');
+            orderSizeChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Order Sizes',
+                        data: values,
+                        backgroundColor: [
+                            'rgba(255, 99, 132, 0.2)',
+                            'rgba(54, 162, 235, 0.2)',
+                            'rgba(255, 206, 86, 0.2)',
+                            'rgba(75, 192, 192, 0.2)'
+                        ],
+                        borderColor: [
+                            'rgba(255, 99, 132, 1)',
+                            'rgba(54, 162, 235, 1)',
+                            'rgba(255, 206, 86, 1)',
+                            'rgba(75, 192, 192, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                 options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'white' // Legend labels color
+                            }
+                        },
+                        tooltip: {
+                            titleColor: 'white', // Tooltip title color
+                            bodyColor: 'white' // Tooltip body color
+                        }
+                    }
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching order size data:', error);
+        });
+    }
+
+function updateIncomeTimelineChart(period = '') {
+    fetch('/income_timeline', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ period: period })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (!data) {
+            throw new Error('Data is empty or undefined');
+        }
+        console.log('Income data:', data);
+
+        if (incomeTimelineChart) {
+            incomeTimelineChart.destroy(); // Destroy existing chart if it exists
+        }
+
+        const { labels, values } = processDataForPeriod(data, period);
+        const ctx = document.getElementById('incomeTimelineChart').getContext('2d');
+        incomeTimelineChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Income Over Time',
+                    data: values,
+                    backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                    borderColor: 'rgba(153, 102, 255, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        ticks: {
+                            color: 'white' // X-axis labels color
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: 'white' // Y-axis labels color
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white' // Legend labels color
+                        }
+                    },
+                    tooltip: {
+                        titleColor: 'white', // Tooltip title color
+                        bodyColor: 'white' // Tooltip body color
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching or processing income timeline data:', error);
+    });
+}
+
+        function updateCustomerTypesChart(period) {
+    fetch('/customer_types', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ period: period })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (customerTypesChart) {
+            customerTypesChart.destroy();
+        }
+        const labels = ['Walk-ins', 'Regulars', 'VIP'];
+        const values = [data.walk_ins, data.regulars, data.vip];
+        const ctx = document.getElementById('customerTypesChart').getContext('2d');
+        customerTypesChart = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Customer Types',
+                    data: values,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.2)',
+                        'rgba(54, 162, 235, 0.2)',
+                        'rgba(255, 206, 86, 0.2)'
+                    ],
+                    borderColor: [
+                        'rgba(255, 99, 132, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(255, 206, 86, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white'
+                        }
+                    },
+                    tooltip: {
+                        titleColor: 'white',
+                        bodyColor: 'white'
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching customer types data:', error);
+    });
+}
+
+
+  function processDataForPeriod(data, period) {
+    let labels = [];
+    let values = [];
+
+    if (period === 'last_week' || period === 'last_month') {
+        // Aggregate data by date
+        const dailyData = {};
+
+        data.forEach(item => {
+            const date = new Date(item.date).toLocaleDateString();
+            if (!dailyData[date]) {
+                dailyData[date] = 0;
+            }
+            dailyData[date] += item.income;
+        });
+
+        const sortedDates = Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b));
+
+        sortedDates.forEach(date => {
+            labels.push(date);
+            values.push(dailyData[date]);
+        });
+    } else if (period === 'last_year' || period === '') {
+        const monthlyData = {};
+
+        data.forEach(item => {
+            const date = new Date(item.date);
+            const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+            if (!monthlyData[monthYear]) {
+                monthlyData[monthYear] = 0;
+            }
+            monthlyData[monthYear] += item.income;
+        });
+
+        const sortedMonths = Object.keys(monthlyData).sort((a, b) => {
+            const [monthA, yearA] = a.split('/');
+            const [monthB, yearB] = b.split('/');
+            return new Date(yearA, monthA - 1) - new Date(yearB, monthB - 1);
+        });
+
+        sortedMonths.forEach(monthYear => {
+            labels.push(monthYear);
+            values.push(monthlyData[monthYear]);
+        });
+    }
+
+    return { labels, values };
+}
+
+    function toggleNav() {
+        const sidebar = document.getElementById('mySidebar');
+        if (sidebar.style.width === '250px') {
+            sidebar.style.width = '0';
+        } else {
+            sidebar.style.width = '250px';
+        }
+    }
+
+    // Initial call to populate the data and charts
+    document.addEventListener('DOMContentLoaded', () => {
+        getData('');
+    });
     </script>
 </body>
 </html>

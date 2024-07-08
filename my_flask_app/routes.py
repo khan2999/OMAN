@@ -1,4 +1,3 @@
-import locale
 from flask import render_template, request, jsonify
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
@@ -7,6 +6,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
+
 
 def execute_query(query, params=None):
     connection = get_db_connection()
@@ -25,167 +25,250 @@ def execute_query(query, params=None):
         logging.error("Failed to establish database connection")
         return None
 
-# Ensure the welcome_page route is defined only once
+
 @app.route('/')
 def welcome_page():
     return render_template('welcome.html')
 
+
 @app.route('/get_data', methods=['POST'])
-def get_data():
-    category = request.form['category']
-    start_year = request.form['start_year']
-    end_year = request.form['end_year']
+def get_data_summary():
+    data = request.json
+    period = data.get('period')
 
-    logging.info(f"Selected category: {category}")
-    logging.info(f"Start year: {start_year}")
-    logging.info(f"End year: {end_year}")
-
-    connection = get_db_connection()
-    if connection:
-        cursor = connection.cursor()
-        if category == "all":
-            query = """
-                SELECT SUM(o.total) AS total_revenue, AVG(o.total/o.nitems) AS average_order_value, 
-                       COUNT(o.orderID) AS total_orders, SUM(o.nitems) AS total_sales
-                FROM orders o
-                WHERE YEAR(o.orderDate) BETWEEN %s AND %s
-                """
-            cursor.execute(query, (start_year, end_year))
-        else:
-            query = """
-                SELECT SUM(o.total) AS total_revenue, AVG(o.total/o.nitems) AS average_order_value, 
-                       COUNT(o.orderID) AS total_orders, SUM(o.nitems) AS total_sales
-                FROM orders o
-                JOIN orderitems oi ON o.orderID = oi.orderID
-                JOIN products p ON oi.SKU = p.SKU
-                WHERE p.Name = %s AND YEAR(o.orderDate) BETWEEN %s AND %s
-                """
-            cursor.execute(query, (category, start_year, end_year))
-        data = cursor.fetchone()
-        cursor.close()
-        connection.close()
-
-        logging.info(f"Fetched data: {data}")
-
-        total_revenue = locale.format_string('%.2f', data[0], grouping=True).replace(",", ".")
-        average_order_value = locale.format_string('%.2f', data[1], grouping=True).replace(",", ".")
-        total_orders = locale.format_string('%d', data[2], grouping=True).replace(",", ".")
-        total_sales = locale.format_string('%.2f', data[3], grouping=True).replace(",", ".")
-
-        if len(total_revenue) > 6:
-            total_revenue = str(int(float(total_revenue) / 1000)) + "K"
-        if len(average_order_value) > 6:
-            average_order_value = str(int(float(average_order_value) / 1000)) + "K"
-        if len(total_orders) > 6:
-            total_orders = str(int(float(total_orders) / 1000)) + "K"
-        if len(total_sales) > 6:
-            total_sales = str(int(float(total_sales) / 1000)) + "K"
-
-        return render_template('welcome.html', total_revenue=total_revenue,
-                               average_order_value=average_order_value,
-                               total_orders=total_orders,
-                               total_sales=total_sales)
+    if period == 'last_week':
+        start_date, end_date = '2022-12-25', '2022-12-31'
+    elif period == 'last_month':
+        start_date, end_date = '2022-12-01', '2022-12-31'
+    elif period == 'last_year':
+        start_date, end_date = '2022-01-01', '2022-12-31'
     else:
-        return jsonify({"error": "Could not establish a database connection"})
+        start_date, end_date = '2019-01-01', '2024-12-31'
 
-@app.route('/top_stores', methods=['GET'])
-def get_top_stores():
-    query = """
-        SELECT 
-            s.storeID,
-            s.city,
-            s.state,
-            SUM(COALESCE(o.total, 0)) AS total_revenue
-        FROM stores s
-        LEFT JOIN orders o ON s.storeID = o.storeID AND YEAR(o.orderDate) BETWEEN 2020 AND 2023
-        GROUP BY s.storeID, s.city, s.state
-        ORDER BY total_revenue DESC
+    logging.info(f"Selected period: {period}")
+    logging.info(f"Start date: {start_date}")
+    logging.info(f"End date: {end_date}")
+
+    queries = {
+        "total_revenue": "SELECT SUM(total) AS total_revenue FROM orders WHERE orderDate BETWEEN %s AND %s",
+        "average_order_value": "SELECT AVG(total / nitems) AS average_order_value FROM orders WHERE orderDate BETWEEN %s AND %s",
+        "total_orders": "SELECT COUNT(orderID) AS total_orders FROM orders WHERE orderDate BETWEEN %s AND %s",
+        "total_sales": "SELECT SUM(nitems) AS total_sales FROM orders WHERE orderDate BETWEEN %s AND %s",
+    }
+
+    results = {}
+    for key, query in queries.items():
+        result = execute_query(query, (start_date, end_date))
+        results[key] = result[0][key] if result else '0'
+
+    logging.info(f"Fetched data: {results}")
+
+    return jsonify(results)
+
+
+@app.route('/top_stores', methods=['POST'])
+def get_top_stores_data():
+    data = request.json
+    period = data.get('period', '')
+
+    if period == 'last_week':
+        start_date, end_date = '2022-12-25', '2022-12-31'
+    elif period == 'last_month':
+        start_date, end_date = '2022-12-01', '2022-12-31'
+    elif period == 'last_year':
+        start_date, end_date = '2022-01-01', '2022-12-31'
+    else:
+        start_date, end_date = '2019-01-01', '2024-12-31'
+
+    logging.info(f"Selected period: {period}")
+    logging.info(f"Start date: {start_date}")
+    logging.info(f"End date: {end_date}")
+
+    top_stores_query = """
+        SELECT s.storeID, s.city, SUM(o.total) AS total_income
+        FROM orders o
+        JOIN stores s ON o.storeID = s.storeID
+        WHERE o.orderDate BETWEEN %s AND %s
+        GROUP BY s.storeID, s.city
+        ORDER BY total_income DESC
         LIMIT 5
     """
-    top_stores = execute_query(query)
-    return jsonify(top_stores if top_stores else {"error": "Error fetching top stores data"})
 
-@app.route('/top_products', methods=['GET'])
-def get_top_products():
-    query = """
-        SELECT 
-            p.Name AS product_name,
-            COUNT(oi.orderID) AS total_orders
-        FROM products p
-        JOIN orderitems oi ON p.SKU = oi.SKU
-        JOIN orders o ON oi.orderID = o.orderID AND YEAR(o.orderDate) BETWEEN 2020 AND 2023
-        GROUP BY p.Name
-        ORDER BY total_orders DESC
-        LIMIT 5
+    top_stores_data = execute_query(top_stores_query, (start_date, end_date))
+    logging.info(f"Top stores data: {top_stores_data}")
+
+    results = {
+        "top_stores": top_stores_data
+    }
+
+    return jsonify(results)
+
+
+@app.route('/order_size_data', methods=['POST'])
+def get_order_size_data():
+    data = request.json
+    period = data.get('period', '')
+
+    if period == 'last_week':
+        start_date, end_date = '2022-12-25', '2022-12-31'
+    elif period == 'last_month':
+        start_date, end_date = '2022-12-01', '2022-12-31'
+    elif period == 'last_year':
+        start_date, end_date = '2022-01-01', '2022-12-31'
+    else:
+        start_date, end_date = '2019-01-01', '2024-12-31'
+
+    logging.info(f"Selected period: {period}")
+    logging.info(f"Start date: {start_date}")
+    logging.info(f"End date: {end_date}")
+
+    order_size_query = """
+        SELECT nitems AS order_size, COUNT(*) AS count
+        FROM orders
+        WHERE orderDate BETWEEN %s AND %s
+        GROUP BY order_size
+        ORDER BY order_size
     """
-    top_products = execute_query(query)
-    return jsonify(top_products if top_products else {"error": "Error fetching top products data"})
 
-@app.route('/sales_by_size', methods=['GET'])
-def get_sales_by_size():
-    query = """
-        SELECT 
-            p.Size AS size,
-            COUNT(DISTINCT oi.orderID) AS total_sales  -- Count distinct orders per size
-        FROM products p
-        LEFT JOIN orderitems oi ON p.SKU = oi.SKU
-        LEFT JOIN orders o ON oi.orderID = o.orderID
-        WHERE YEAR(o.orderDate) IN (2020, 2022, 2023)
-        GROUP BY p.Size
-        ORDER BY p.Size
+    order_size_data = execute_query(order_size_query, (start_date, end_date))
+    logging.info(f"Order size data: {order_size_data}")
+
+    # Map nitems to specific pizza sizes
+    size_mapping = {
+        1: 'Small',
+        2: 'Medium',
+        3: 'Large',
+        4: 'Extra Large'
+    }
+
+    # Transform the data to map sizes correctly
+    transformed_data = []
+    for item in order_size_data:
+        size = size_mapping.get(item['order_size'], 'Other')
+        count = item['count']
+        transformed_data.append({'order_size': size, 'count': count})
+
+    # Aggregate counts for each size
+    aggregated_data = {}
+    for item in transformed_data:
+        size = item['order_size']
+        if size in aggregated_data:
+            aggregated_data[size] += item['count']
+        else:
+            aggregated_data[size] = item['count']
+
+    # Convert aggregated data to list format
+    result_data = [{'order_size': size, 'count': count} for size, count in aggregated_data.items()]
+
+    logging.info(f"Transformed order size data: {result_data}")
+
+    results = {"order_sizes": result_data}
+
+    return jsonify(results)
+
+@app.route('/income_timeline', methods=['POST'])
+def income_timeline():
+    data = request.json
+    period = data.get('period', '')
+
+    if period == 'last_week':
+        start_date, end_date = '2022-12-25', '2022-12-31'
+    elif period == 'last_month':
+        start_date, end_date = '2022-12-01', '2022-12-31'
+    elif period == 'last_year':
+        start_date, end_date = '2022-01-01', '2022-12-31'
+    else:
+        start_date, end_date = '2019-01-01', '2024-12-31'
+
+    income_timeline_query = """
+        SELECT DATE(orderDate) as date, SUM(total) as income
+        FROM orders
+        WHERE orderDate BETWEEN %s AND %s
+        GROUP BY DATE(orderDate)
+        ORDER BY DATE(orderDate)
     """
-    sales_by_size = execute_query(query)
-    return jsonify(sales_by_size if sales_by_size else {"error": "Error fetching sales by size data"})
 
-@app.route('/analysis', methods=['GET', 'POST'])
-def analysis_page():
-    data = None  # Initialize data variable
+    try:
+        result = execute_query(income_timeline_query, (start_date, end_date))
+        return jsonify(result)
+    except Exception as e:
+        logging.error(f"Error fetching income timeline data: {str(e)}")
+        return jsonify([]), 500
 
-    if request.method == 'POST':
-        selected_table = request.form['table']
-        selected_column = request.form['column']
 
-        query = f"SELECT {selected_column} FROM {selected_table};"
-        data = execute_query(query)
+@app.route('/customer_types', methods=['POST'])
+def get_customer_types():
+    data = request.json
+    period = data.get('period', '')
 
-    return render_template('index.html', data=data)
+    # Define the default period
+    default_start_date = '2019-01-01'
+    default_end_date = '2024-12-31'
 
-@app.route('/stores', methods=['GET'])
-def get_stores():
-    query = """
-        SELECT 
-            s.storeID, 
-            s.latitude, 
-            s.longitude, 
-            s.city, 
-            s.state, 
-            YEAR(o.orderDate) as year, 
-            MONTH(o.orderDate) as month,
-            COALESCE(ROUND(SUM(o.total), 2), 0) as total
-        FROM stores s
-        LEFT JOIN orders o ON s.storeID = o.storeID
-        GROUP BY s.storeID, s.latitude, s.longitude, s.city, s.state, YEAR(o.orderDate), MONTH(o.orderDate)
-        ORDER BY s.storeID, year, month
+    # Define the selected period based on the input
+    if period == 'last_week':
+        selected_start_date, selected_end_date = '2022-12-25', '2022-12-31'
+    elif period == 'last_month':
+        selected_start_date, selected_end_date = '2022-12-01', '2022-12-31'
+    elif period == 'last_year':
+        selected_start_date, selected_end_date = '2022-01-01', '2022-12-31'
+    else:
+        selected_start_date, selected_end_date = '2019-01-01', '2024-12-31'
+
+    logging.info(f"Selected period: {period}")
+    logging.info(f"Start date: {selected_start_date}")
+    logging.info(f"End date: {selected_end_date}")
+
+    # Query to categorize customers based on the default period
+    customer_types_query = """
+           SELECT customerID,
+                  CASE 
+                      WHEN total_orders <= 2 THEN 'walk_ins'
+                      WHEN total_orders BETWEEN 3 AND 10 THEN 'regulars'
+                      ELSE 'vip'
+                  END AS customer_type
+           FROM (
+               SELECT customerID, COUNT(orderID) AS total_orders
+               FROM orders
+               WHERE orderDate BETWEEN %s AND %s
+               GROUP BY customerID
+           ) AS customer_orders
+       """
+
+    # Execute the query for the default period
+    customer_types_result = execute_query(customer_types_query, (default_start_date, default_end_date))
+
+    if not customer_types_result:
+        logging.warning("No data found for the default period.")
+        return jsonify({'walk_ins': 0, 'regulars': 0, 'vip': 0})
+
+    # Create a dictionary to store customer types
+    customer_types_dict = {row['customerID']: row['customer_type'] for row in customer_types_result}
+
+    # Query to count orders placed by categorized customers in the selected period
+    orders_query = """
+        SELECT customerID, COUNT(orderID) as order_count
+        FROM orders
+        WHERE orderDate BETWEEN %s AND %s
+        GROUP BY customerID
     """
-    stores = execute_query(query)
-    return jsonify(stores if stores else {"error": "Error fetching stores data"})
 
-@app.route('/customers/<storeID>', methods=['GET'])
-def get_customer_counts(storeID):
-    query = """
-        SELECT 
-            year, 
-            customer_count,
-            COALESCE(customer_count - LAG(customer_count) OVER (ORDER BY year), 0) AS delta
-        FROM (
-            SELECT 
-                YEAR(o.orderDate) AS year, 
-                COUNT(DISTINCT o.customerID) AS customer_count
-            FROM orders o
-            WHERE o.storeID = %s
-            GROUP BY YEAR(o.orderDate)
-        ) AS yearly_customers
-    """
-    customer_counts = execute_query(query, (storeID,))
-    print(f"Customer counts for store {storeID}: {customer_counts}")  # Debugging
-    return jsonify(customer_counts if customer_counts else {"error": "Error fetching customer counts data"})
+    # Execute the query for the selected period
+    orders_result = execute_query(orders_query, (selected_start_date, selected_end_date))
+
+    if not orders_result:
+        logging.warning("No orders found for the selected period.")
+        return jsonify({'walk_ins': 0, 'regulars': 0, 'vip': 0})
+
+    # Initialize counts for each customer type
+    customer_type_counts = {'walk_ins': 0, 'regulars': 0, 'vip': 0}
+
+    # Count the number of orders for each customer type in the selected period
+    for order in orders_result:
+        customer_id = order['customerID']
+        customer_type = customer_types_dict.get(customer_id, 'walk_ins')  # Default to walk_ins if not found
+        customer_type_counts[customer_type] += 1
+
+    logging.info(f"Customer type counts for the selected period: {customer_type_counts}")
+
+    return jsonify(customer_type_counts)
