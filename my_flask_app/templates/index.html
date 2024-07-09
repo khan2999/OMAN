@@ -112,10 +112,11 @@
                 <thead>
                     <tr>
                         <th>Store</th>
-                        <th>Umsatz-Delta zum Vorjahr (%)</th>
-                        <th>Umsatz-Jahr</th>
-                        <th>Kunden-Delta zum Vorjahr (%)</th>
-                        <th>Kunden-Jahr</th>
+                        <th>Delta zum Vorjahr</th>
+                        <th>Umsatz</th>
+                        <th>Delta zum Vorjahr (%)</th>
+                        <th>Kunden</th>
+                        <th>Welta zum Vorjahr</th>
                         <th>Bestellungen-Jahr</th>
                     </tr>
                 </thead>
@@ -424,36 +425,64 @@
             .catch(error => console.error('Error fetching distance data:', error));
         }
 
+       var crossSellChart;
+
         function updateCrossSellChart(selectedYear) {
             const storeIDs = Object.keys(selectedStores);
 
             const datasetsPromises = storeIDs.map(storeID => {
                 return fetch(`/cross_sell_analysis/${storeID}?year=${selectedYear}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Netzwerkantwort war nicht ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        const labels = [];
-                        const counts = [];
-                        data.forEach(row => {
-                            labels.push(`${row.product1_name} & ${row.product2_name}`);
-                            counts.push(row.count);
-                        });
+                        console.log(`Daten für Store ${storeID} und Jahr ${selectedYear}:`, data);
+
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+
+                        if (data.length === 0) {
+                            console.warn(`Keine Daten für Store ${storeID} und Jahr ${selectedYear} erhalten`);
+                            return null;
+                        }
+
+                        const labels = data.map(row => `${row.product1_name} & ${row.product2_name}`);
+                        const counts = data.map(row => row.count);
 
                         return {
-                            label: `Store ${storeID}`,
-                            data: counts,
-                            backgroundColor: selectedStores[storeID].color,
-                            borderColor: selectedStores[storeID].color,
-                            borderWidth: 1
+                            storeID: storeID,  // Speichern Sie die Store-ID zur späteren Verwendung
+                            labels: labels,    // Speichern Sie die Labels zur späteren Verwendung
+                            dataset: {
+                                label: `Store ${storeID}`,
+                                data: counts,
+                                backgroundColor: selectedStores[storeID].color,
+                                borderColor: selectedStores[storeID].color,
+                                borderWidth: 1
+                            }
                         };
-                    });
+                    })
+                    .catch(error => console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, error));
             });
 
-            Promise.all(datasetsPromises).then(datasets => {
+            Promise.all(datasetsPromises).then(results => {
+                const datasets = results.filter(result => result !== null).map(result => result.dataset);
+
+                if (datasets.length === 0) {
+                    console.warn('Keine gültigen Daten für Cross-Sell-Chart erhalten');
+                    return;
+                }
+
                 if (crossSellChart) {
                     crossSellChart.destroy();
                 }
 
-                const labels = datasets.length > 0 ? datasets[0].labels : [];
+                // Nehmen Sie die Labels vom ersten Datensatz, da sie für alle gleich sein sollten
+                const labels = results[0].labels;
 
                 crossSellChart = new Chart(document.getElementById('cross-sell-chart'), {
                     type: 'bar',
@@ -467,7 +496,7 @@
                             x: {
                                 title: {
                                     display: true,
-                                    text: 'Product Pairs'
+                                    text: 'Products'
                                 }
                             },
                             y: {
@@ -480,9 +509,76 @@
                     }
                 });
             })
-            .catch(error => console.error('Error fetching cross-sell data:', error));
+            .catch(error => console.error('Fehler beim Verarbeiten der Cross-Sell-Daten:', error));
         }
 
+
+
+
+        function fetchDataForStore(storeID, year) {
+            const previousYear = year - 1;
+
+            return Promise.all([
+                fetch(`/customerscount/${storeID}?year=${year}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+                        console.log(`Kundendaten für Store ${storeID} und Jahr ${year}:`, data);
+                        return { type: 'customers', year, data };
+                    }),
+                fetch(`/orderscount/${storeID}?year=${year}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${year}:`, data);
+                        return { type: 'orders', year, data };
+                    }),
+                fetch(`/customerscount/${storeID}?year=${previousYear}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID} im Vorjahr:`, data.error);
+                            return null;
+                        }
+                        console.log(`Kundendaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        return { type: 'customers', year: previousYear, data };
+                    }),
+                fetch(`/orderscount/${storeID}?year=${previousYear}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID} im Vorjahr:`, data.error);
+                            return null;
+                        }
+                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        return { type: 'orders', year: previousYear, data };
+                    })
+            ]).then(results => {
+                results.forEach(result => {
+                    if (result) {
+                        if (result.type === 'customers') {
+                            selectedStores[storeID].customerCounts = selectedStores[storeID].customerCounts || {};
+                            result.data.forEach(row => {
+                                selectedStores[storeID].customerCounts[row.year] = row.customer_count;
+                            });
+                        } else if (result.type === 'orders') {
+                            selectedStores[storeID].orders = selectedStores[storeID].orders || {};
+                            result.data.forEach(row => {
+                                selectedStores[storeID].orders[row.year] = row.order_count;
+                            });
+                        }
+                    }
+                });
+
+                updateTable(year); // Update the table for the current year
+            }).catch(error => console.error('Fehler beim Abrufen der Daten:', error));
+        }
 
         function updateTable(selectedYear) {
             const tableBody = document.getElementById('table-body');
@@ -491,20 +587,28 @@
             Object.values(selectedStores).forEach(store => {
                 const previousYear = selectedYear - 1;
 
+                // Berechnung des Umsatz-Delta zum Vorjahr
                 const salesDelta = store.totals && store.totals[previousYear]
                     ? ((store.totals[selectedYear] - store.totals[previousYear]) / store.totals[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const salesYear = store.totals && store.totals[selectedYear] ? store.totals[selectedYear] : 'N/A';
 
+                // Berechnung des Kunden-Delta zum Vorjahr
                 const customerDelta = store.customerCounts && store.customerCounts[previousYear]
                     ? ((store.customerCounts[selectedYear] - store.customerCounts[previousYear]) / store.customerCounts[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const customerYear = store.customerCounts && store.customerCounts[selectedYear] ? store.customerCounts[selectedYear] : 'N/A';
 
+                // Berechnung des Bestellungs-Delta zum Vorjahr
                 const ordersDelta = store.orders && store.orders[previousYear]
                     ? ((store.orders[selectedYear] - store.orders[previousYear]) / store.orders[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const ordersYear = store.orders && store.orders[selectedYear] ? store.orders[selectedYear] : 'N/A';
+
+                // Konsolenausgabe zur Überprüfung der Berechnungen
+                console.log(`Store: ${store.storeID}, Sales Previous Year: ${store.totals[previousYear]}, Sales Selected Year: ${store.totals[selectedYear]}, Sales Delta: ${salesDelta}`);
+                console.log(`Store: ${store.storeID}, Customers Previous Year: ${store.customerCounts[previousYear]}, Customers Selected Year: ${store.customerCounts[selectedYear]}, Customer Delta: ${customerDelta}`);
+                console.log(`Store: ${store.storeID}, Orders Previous Year: ${store.orders[previousYear]}, Orders Selected Year: ${store.orders[selectedYear]}, Orders Delta: ${ordersDelta}`);
 
                 const row = document.createElement('tr');
                 row.style.backgroundColor = store.color; // Set the background color of the row
@@ -542,6 +646,25 @@
 
             console.log('Table updated:', tableBody.innerHTML); // Log the updated table
         }
+
+        // Beispielaufruf der Funktion für jedes ausgewählte Geschäft und Jahr
+        Object.keys(selectedStores).forEach(storeID => {
+            fetchDataForStore(storeID, 2022);
+        });
+
+
+
+
+
+
+
+        document.getElementById('update-chart').addEventListener('click', function() {
+            const selectedYear = document.getElementById('year-select').value;
+            Object.keys(selectedStores).forEach(storeID => {
+                fetchDataForStore(storeID, selectedYear);
+            });
+        });
+
 
         document.getElementById('update-chart').addEventListener('click', function() {
             const selectedYear = document.getElementById('year-select').value;
@@ -656,8 +779,13 @@
             }
         }
 
-        fetch('/stores')
-            .then(response => response.json())
+       fetch('/stores')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
             .then(data => {
                 let stores = {};
                 data.forEach(store => {
