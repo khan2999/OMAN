@@ -50,11 +50,16 @@
             align-items: center;
             margin-bottom: 10px;
         }
+        #chart-options {
+            display: flex;
+            flex-direction: column;
+            margin-right: 10px;
+        }
         #data-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
-            display: none; /* Initially hide the table */
+            display: none;
         }
         #data-table th, #data-table td {
             border: 1px solid #ddd;
@@ -80,31 +85,38 @@
         <div class="chart-container">
             <div id="controls">
                 <label for="chart-select">Select Data:</label>
-                <select id="chart-select">
-                    <option value="all">All</option>
-                    <option value="sales">Sales Chart</option>
-                    <option value="customer-chart">Customer Chart</option>
-                    <option value="table">Table</option>
-                </select>
+                <div id="chart-options">
+                    <label><input type="checkbox" value="chart"> Sales Chart</label>
+                    <label><input type="checkbox" value="customer-chart"> Customer Chart</label>
+                    <label><input type="checkbox" value="order-chart"> Order Chart</label>
+                    <label><input type="checkbox" value="avg-spending-chart"> Average Spending Chart</label>
+                    <label><input type="checkbox" value="distance-chart"> Customer Distance Chart</label>
+                    <label><input type="checkbox" value="cross-sell-chart"> Cross-Sell Chart</label>
+                    <label><input type="checkbox" value="data-table"> Table</label>
+                </div>
+                <button id="show-all">Show All</button>
+                <button id="update-chart">Update Data</button>
+                <button id="toggle-view">Show Selected Stores</button>
                 <label for="year-select">Select Year:</label>
                 <select id="year-select">
                     <!-- Options will be populated dynamically -->
                 </select>
-                <button id="update-chart">Update Data</button>
-                <button id="toggle-view">Show Selected Stores</button>
             </div>
             <canvas id="chart" class="chart"></canvas>
             <canvas id="customer-chart" class="chart"></canvas>
+            <canvas id="order-chart" class="chart"></canvas>
+            <canvas id="avg-spending-chart" class="chart"></canvas>
+            <canvas id="distance-chart" class="chart"></canvas>
+            <canvas id="cross-sell-chart" class="chart"></canvas>
             <table id="data-table">
                 <thead>
                     <tr>
                         <th>Store</th>
-                        <th>Delta</th>
-                        <th>Umsatz</th>
-                        <th>Delta</th>
-                        <th>Anzahl Kunden</th>
-                        <th>Delta</th>
-                        <th>Anzahl Bestellungen</th>
+                        <th>Umsatz-Delta zum Vorjahr (%)</th>
+                        <th>Umsatz-Jahr</th>
+                        <th>Kunden-Delta zum Vorjahr (%)</th>
+                        <th>Kunden-Jahr</th>
+                        <th>Bestellungen-Jahr</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
@@ -123,7 +135,7 @@
         }).addTo(map);
 
         var selectedStores = {};
-        var chart, customerChart;
+        var chart, customerChart, orderChart, avgSpendingChart, distanceChart, crossSellChart;
         var availableYears = new Set();
         var markers = {};
         var showingAllStores = true;
@@ -192,160 +204,432 @@
 
         function updateCustomerChart(selectedYear) {
             const labels = Array.from({ length: 12 }, (v, k) => new Date(0, k).toLocaleString('en', { month: 'short' }));
-            const datasets = Object.values(selectedStores).map(store => {
-                const monthlyCustomerCounts = Array(12).fill(0);
-                if (store.monthlyCustomerCounts && store.monthlyCustomerCounts[selectedYear]) {
-                    store.monthlyCustomerCounts[selectedYear].forEach((count, index) => {
-                        monthlyCustomerCounts[index] = count;
+            const datasetsPromises = Object.values(selectedStores).map(store => {
+                return fetch(`/customers/${store.storeID}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const monthlyCustomerCounts = Array(12).fill(0);
+                        data.forEach(row => {
+                            if (row.year == selectedYear) {
+                                monthlyCustomerCounts[row.month - 1] = row.customer_count;
+                            }
+                        });
+                        return {
+                            label: store.storeID,
+                            data: monthlyCustomerCounts,
+                            fill: false,
+                            borderColor: store.color,
+                            backgroundColor: store.color,
+                            tension: 0.1
+                        };
                     });
-                }
-                return {
-                    label: store.storeID,
-                    data: monthlyCustomerCounts,
-                    fill: false,
-                    borderColor: store.color,
-                    backgroundColor: store.color,
-                    tension: 0.1
-                };
             });
 
-            if (customerChart) {
-                customerChart.destroy();
-            }
+            Promise.all(datasetsPromises).then(datasets => {
+                if (customerChart) {
+                    customerChart.destroy();
+                }
 
-            customerChart = new Chart(document.getElementById('customer-chart'), {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: datasets
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: 'Month'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: 'Customer Count'
+                customerChart = new Chart(document.getElementById('customer-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Customer Count'
+                                }
                             }
                         }
                     }
-                }
+                });
             });
         }
 
+        function updateOrderChart(selectedYear) {
+            const labels = Array.from({ length: 12 }, (v, k) => new Date(0, k).toLocaleString('en', { month: 'short' }));
+            const datasetsPromises = Object.values(selectedStores).map(store => {
+                return fetch(`/orders/monthly/${store.storeID}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const monthlyOrderCounts = Array(12).fill(0);
+                        data.forEach(row => {
+                            if (row.year == selectedYear) {
+                                monthlyOrderCounts[row.month - 1] = row.order_count;
+                            }
+                        });
+                        return {
+                            label: store.storeID,
+                            data: monthlyOrderCounts,
+                            fill: false,
+                            borderColor: store.color,
+                            backgroundColor: store.color,
+                            tension: 0.1
+                        };
+                    });
+            });
 
-       function updateTable(selectedYear) {
-           const tableBody = document.getElementById('table-body');
-           tableBody.innerHTML = ''; // Clear existing table data
+            Promise.all(datasetsPromises).then(datasets => {
+                if (orderChart) {
+                    orderChart.destroy();
+                }
 
-           Object.values(selectedStores).forEach(store => {
-               const previousYear = selectedYear - 1;
+                orderChart = new Chart(document.getElementById('order-chart'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Order Count'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
 
-               const salesDelta = store.totals && store.totals[previousYear]
-                   ? ((store.totals[selectedYear] - store.totals[previousYear]) / store.totals[previousYear] * 100).toFixed(2)
-                   : 'N/A';
-               const salesYear = store.totals && store.totals[selectedYear] ? store.totals[selectedYear] : 'N/A';
+        function updateAvgSpendingChart(selectedYear) {
+            const labels = Array.from({ length: 12 }, (v, k) => new Date(0, k).toLocaleString('en', { month: 'short' }));
+            const datasetsPromises = Object.values(selectedStores).map(store => {
+                return fetch(`/average_spending/${store.storeID}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const monthlyAvgSpending = Array(12).fill(0);
+                        data.forEach(row => {
+                            if (row.year == selectedYear) {
+                                monthlyAvgSpending[row.month - 1] = row.avg_spending;
+                            }
+                        });
+                        return {
+                            label: store.storeID,
+                            data: monthlyAvgSpending,
+                            fill: false,
+                            borderColor: store.color,
+                            backgroundColor: store.color,
+                            tension: 0.1
+                        };
+                    });
+            });
 
-               const customerDelta = store.customerCounts && store.customerCounts[previousYear]
-                   ? ((store.customerCounts[selectedYear] - store.customerCounts[previousYear]) / store.customerCounts[previousYear] * 100).toFixed(2)
-                   : 'N/A';
-               const customerYear = store.customerCounts && store.customerCounts[selectedYear] ? store.customerCounts[selectedYear] : 'N/A';
+            Promise.all(datasetsPromises).then(datasets => {
+                if (avgSpendingChart) {
+                    avgSpendingChart.destroy();
+                }
 
-               const ordersDelta = store.orders && store.orders[previousYear]
-                   ? ((store.orders[selectedYear] - store.orders[previousYear]) / store.orders[previousYear] * 100).toFixed(2)
-                   : 'N/A';
-               const ordersYear = store.orders && store.orders[selectedYear] ? store.orders[selectedYear] : 'N/A';
+                avgSpendingChart = new Chart(document.getElementById('avg-spending-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Month'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Average Spending'
+                                }
+                            }
+                        }
+                    }
+                });
+            });
+        }
 
-               const row = document.createElement('tr');
+        function updateDistanceChart(selectedYear) {
+            const storeIDs = Object.keys(selectedStores);
 
-               const storeCell = document.createElement('td');
-               storeCell.textContent = store.storeID;
-               row.appendChild(storeCell);
+            fetch('/customers_by_distance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    stores: storeIDs,
+                    year: selectedYear
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const labels = ['0-2 km', '2-5 km', '>5 km'];
+                const datasets = storeIDs.map(storeID => {
+                    const storeData = data[storeID] || {'0-2 km': 0, '2-5 km': 0, '>5 km': 0};
+                    return {
+                        label: `Store ${storeID}`,
+                        data: [storeData['0-2 km'], storeData['2-5 km'], storeData['>5 km']],
+                        backgroundColor: selectedStores[storeID].color
+                    };
+                });
 
-               const salesDeltaCell = document.createElement('td');
-               salesDeltaCell.textContent = salesDelta !== 'N/A' ? salesDelta + '%' : 'N/A';
-               row.appendChild(salesDeltaCell);
+                if (distanceChart) {
+                    distanceChart.destroy();
+                }
 
-               const salesYearCell = document.createElement('td');
-               salesYearCell.textContent = salesYear !== 'N/A' ? '$' + salesYear.toFixed(2) : 'N/A';
-               row.appendChild(salesYearCell);
+                distanceChart = new Chart(document.getElementById('distance-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Distance'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Customer Count'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching distance data:', error));
+        }
 
-               const customerDeltaCell = document.createElement('td');
-               customerDeltaCell.textContent = customerDelta !== 'N/A' ? customerDelta + '%' : 'N/A';
-               row.appendChild(customerDeltaCell);
+        function updateCrossSellChart(selectedYear) {
+            const storeIDs = Object.keys(selectedStores);
 
-               const customerYearCell = document.createElement('td');
-               customerYearCell.textContent = customerYear !== 'N/A' ? customerYear : 'N/A';
-               row.appendChild(customerYearCell);
+            const datasetsPromises = storeIDs.map(storeID => {
+                return fetch(`/cross_sell_analysis/${storeID}?year=${selectedYear}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const labels = [];
+                        const counts = [];
+                        data.forEach(row => {
+                            labels.push(`${row.product1_name} & ${row.product2_name}`);
+                            counts.push(row.count);
+                        });
 
-               const ordersDeltaCell = document.createElement('td');
-               ordersDeltaCell.textContent = ordersDelta !== 'N/A' ? ordersDelta + '%' : 'N/A';
-               row.appendChild(ordersDeltaCell);
+                        return {
+                            label: `Store ${storeID}`,
+                            data: counts,
+                            backgroundColor: selectedStores[storeID].color,
+                            borderColor: selectedStores[storeID].color,
+                            borderWidth: 1
+                        };
+                    });
+            });
 
-               const ordersYearCell = document.createElement('td');
-               ordersYearCell.textContent = ordersYear !== 'N/A' ? ordersYear : 'N/A';
-               row.appendChild(ordersYearCell);
+            Promise.all(datasetsPromises).then(datasets => {
+                if (crossSellChart) {
+                    crossSellChart.destroy();
+                }
 
-               tableBody.appendChild(row);
-           });
-       }
+                const labels = datasets.length > 0 ? datasets[0].labels : [];
+
+                crossSellChart = new Chart(document.getElementById('cross-sell-chart'), {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Product Pairs'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => console.error('Error fetching cross-sell data:', error));
+        }
 
 
-        function showChart(chartId) {
-            console.log(`Showing chart: ${chartId}`);
-            document.getElementById('chart').style.display = 'none';
-                        document.getElementById('customer-chart').style.display = 'none';
-            document.getElementById('data-table').style.display = 'none';
-            document.getElementById(chartId).style.display = 'block';
+        function updateTable(selectedYear) {
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = ''; // Clear existing table data
+
+            Object.values(selectedStores).forEach(store => {
+                const previousYear = selectedYear - 1;
+
+                const salesDelta = store.totals && store.totals[previousYear]
+                    ? ((store.totals[selectedYear] - store.totals[previousYear]) / store.totals[previousYear] * 100).toFixed(2)
+                    : 'N/A';
+                const salesYear = store.totals && store.totals[selectedYear] ? store.totals[selectedYear] : 'N/A';
+
+                const customerDelta = store.customerCounts && store.customerCounts[previousYear]
+                    ? ((store.customerCounts[selectedYear] - store.customerCounts[previousYear]) / store.customerCounts[previousYear] * 100).toFixed(2)
+                    : 'N/A';
+                const customerYear = store.customerCounts && store.customerCounts[selectedYear] ? store.customerCounts[selectedYear] : 'N/A';
+
+                const ordersDelta = store.orders && store.orders[previousYear]
+                    ? ((store.orders[selectedYear] - store.orders[previousYear]) / store.orders[previousYear] * 100).toFixed(2)
+                    : 'N/A';
+                const ordersYear = store.orders && store.orders[selectedYear] ? store.orders[selectedYear] : 'N/A';
+
+                const row = document.createElement('tr');
+                row.style.backgroundColor = store.color; // Set the background color of the row
+
+                const storeCell = document.createElement('td');
+                storeCell.textContent = store.storeID;
+                row.appendChild(storeCell);
+
+                const salesDeltaCell = document.createElement('td');
+                salesDeltaCell.textContent = salesDelta !== 'N/A' ? salesDelta + '%' : 'N/A';
+                row.appendChild(salesDeltaCell);
+
+                const salesYearCell = document.createElement('td');
+                salesYearCell.textContent = salesYear !== 'N/A' ? '$' + parseFloat(salesYear).toFixed(2) : 'N/A';
+                row.appendChild(salesYearCell);
+
+                const customerDeltaCell = document.createElement('td');
+                customerDeltaCell.textContent = customerDelta !== 'N/A' ? customerDelta + '%' : 'N/A';
+                row.appendChild(customerDeltaCell);
+
+                const customerYearCell = document.createElement('td');
+                customerYearCell.textContent = customerYear !== 'N/A' ? customerYear : 'N/A';
+                row.appendChild(customerYearCell);
+
+                const ordersDeltaCell = document.createElement('td');
+                ordersDeltaCell.textContent = ordersDelta !== 'N/A' ? ordersDelta + '%' : 'N/A';
+                row.appendChild(ordersDeltaCell);
+
+                const ordersYearCell = document.createElement('td');
+                ordersYearCell.textContent = ordersYear !== 'N/A' ? ordersYear : 'N/A';
+                row.appendChild(ordersYearCell);
+
+                tableBody.appendChild(row);
+            });
+
+            console.log('Table updated:', tableBody.innerHTML); // Log the updated table
+        }
+
+        document.getElementById('update-chart').addEventListener('click', function() {
+            const selectedYear = document.getElementById('year-select').value;
+            const selectedCharts = Array.from(document.querySelectorAll('#chart-options input:checked')).map(input => input.value);
+
+            showChart(selectedCharts);
+
+            selectedCharts.forEach(chart => {
+                if (chart === 'chart') {
+                    updateChart(selectedYear);
+                } else if (chart === 'customer-chart') {
+                    updateCustomerChart(selectedYear);
+                } else if (chart === 'order-chart') {
+                    updateOrderChart(selectedYear);
+                } else if (chart === 'avg-spending-chart') {
+                    updateAvgSpendingChart(selectedYear);
+                } else if (chart === 'distance-chart') {
+                    updateDistanceChart(selectedYear);
+                } else if (chart === 'cross-sell-chart') {
+                    updateCrossSellChart(selectedYear);
+                } else if (chart === 'data-table') {
+                    updateTable(selectedYear);
+                }
+            });
+        });
+
+        var showingAllCharts = false;
+
+        document.getElementById('show-all').addEventListener('click', function() {
+            const checkboxes = document.querySelectorAll('#chart-options input[type="checkbox"]');
+            const selectedYear = document.getElementById('year-select').value;
+
+            if (showingAllCharts) {
+                checkboxes.forEach(checkbox => checkbox.checked = false);
+                showChart([]);
+                showingAllCharts = false;
+                this.textContent = 'Show All';
+            } else {
+                checkboxes.forEach(checkbox => checkbox.checked = true);
+                const selectedCharts = Array.from(checkboxes).map(input => input.value);
+                showChart(selectedCharts);
+
+                selectedCharts.forEach(chart => {
+                    if (chart === 'chart') {
+                        updateChart(selectedYear);
+                    } else if (chart === 'customer-chart') {
+                        updateCustomerChart(selectedYear);
+                    } else if (chart === 'order-chart') {
+                        updateOrderChart(selectedYear);
+                    } else if (chart === 'avg-spending-chart') {
+                        updateAvgSpendingChart(selectedYear);
+                    } else if (chart === 'distance-chart') {
+                        updateDistanceChart(selectedYear);
+                    } else if (chart === 'cross-sell-chart') {
+                        updateCrossSellChart(selectedYear);
+                    } else if (chart === 'data-table') {
+                        updateTable(selectedYear);
+                    }
+                });
+
+                showingAllCharts = true;
+                this.textContent = 'Hide All';
+            }
+        });
+
+        function showChart(chartIds) {
+            const charts = ['chart', 'customer-chart', 'order-chart', 'avg-spending-chart', 'distance-chart', 'cross-sell-chart', 'data-table'];
+            charts.forEach(id => {
+                if (chartIds.includes(id)) {
+                    document.getElementById(id).style.display = 'block';
+                } else {
+                    document.getElementById(id).style.display = 'none';
+                }
+            });
         }
 
         document.getElementById('toggle-view').addEventListener('click', function() {
             if (showingAllStores) {
-                // Hide all markers first
                 Object.values(markers).forEach(marker => map.removeLayer(marker));
-
-                // Show only selected markers
                 Object.keys(selectedStores).forEach(storeID => {
                     map.addLayer(markers[storeID]);
                 });
-
                 document.getElementById('toggle-view').textContent = 'Show All Stores';
             } else {
-                // Show all markers
                 Object.values(markers).forEach(marker => map.addLayer(marker));
-
                 document.getElementById('toggle-view').textContent = 'Show Selected Stores';
             }
             showingAllStores = !showingAllStores;
-        });
-
-        document.getElementById('update-chart').addEventListener('click', function() {
-            const selectedYear = document.getElementById('year-select').value;
-            const selectedChart = document.getElementById('chart-select').value;
-
-            if (selectedChart === 'all') {
-                document.getElementById('chart').style.display = 'block';
-                document.getElementById('customer-chart').style.display = 'block';
-                document.getElementById('data-table').style.display = 'block';
-                updateChart(selectedYear);
-                updateCustomerChart(selectedYear);
-                updateTable(selectedYear);
-            } else if (selectedChart === 'sales') {
-                showChart('chart');
-                updateChart(selectedYear);
-            } else if (selectedChart === 'customer-chart') {
-                showChart('customer-chart');
-                updateCustomerChart(selectedYear);
-            } else if (selectedChart === 'table') {
-                showChart('data-table');
-                updateTable(selectedYear);
-            }
         });
 
         function highlightMarker(storeID) {
@@ -411,11 +695,10 @@
                     yearSelect.appendChild(option);
                 });
 
-                // Marker nach ihrer Größe sortieren
                 const sortedStoreIDs = Object.keys(stores).sort((a, b) => {
                     const totalA = Object.values(stores[a].totals).reduce((x, y) => x + y, 0);
                     const totalB = Object.values(stores[b].totals).reduce((x, y) => x + y, 0);
-                    return totalB - totalA; // Absteigend sortieren
+                    return totalB - totalA;
                 });
 
                 sortedStoreIDs.forEach(storeID => {
@@ -463,7 +746,7 @@
                         fillOpacity: 0.5,
                         weight: 1,
                         originalColor: markerColor,
-                        storeID: storeID // Speichern der StoreID im Marker
+                        storeID: storeID
                     }).addTo(map);
 
                     marker.bindPopup(popupContent);
@@ -478,31 +761,34 @@
                                 totals: store.totals,
                                 monthlyTotals: store.monthlyTotals,
                                 customerCounts: store.customerCounts,
+                                orders: store.orders,
                                 years: store.years,
                                 color: store.color
                             };
                             highlightMarker(storeID);
                         }
                         const selectedYear = document.getElementById('year-select').value;
-                        const selectedChart = document.getElementById('chart-select').value;
+                        const selectedCharts = Array.from(document.querySelectorAll('#chart-options input:checked')).map(input => input.value);
 
-                        if (selectedChart === 'all') {
-                            document.getElementById('chart').style.display = 'block';
-                            document.getElementById('customer-chart').style.display = 'block';
-                            document.getElementById('data-table').style.display = 'block';
-                            updateChart(selectedYear);
-                            updateCustomerChart(selectedYear);
-                            updateTable(selectedYear);
-                        } else if (selectedChart === 'sales') {
-                            showChart('chart');
-                            updateChart(selectedYear);
-                        } else if (selectedChart === 'customer-chart') {
-                            showChart('customer-chart');
-                            updateCustomerChart(selectedYear);
-                        } else if (selectedChart === 'table') {
-                            showChart('data-table');
-                            updateTable(selectedYear);
-                        }
+                        showChart(selectedCharts);
+
+                        selectedCharts.forEach(chart => {
+                            if (chart === 'chart') {
+                                updateChart(selectedYear);
+                            } else if (chart === 'customer-chart') {
+                                updateCustomerChart(selectedYear);
+                            } else if (chart === 'order-chart') {
+                                updateOrderChart(selectedYear);
+                            } else if (chart === 'avg-spending-chart') {
+                                updateAvgSpendingChart(selectedYear);
+                            } else if (chart === 'distance-chart') {
+                                updateDistanceChart(selectedYear);
+                            } else if (chart === 'cross-sell-chart') {
+                                updateCrossSellChart(selectedYear);
+                            } else if (chart === 'data-table') {
+                                updateTable(selectedYear);
+                            }
+                        });
                     });
 
                     markers[storeID] = marker;
@@ -512,4 +798,3 @@
     </script>
 </body>
 </html>
-
