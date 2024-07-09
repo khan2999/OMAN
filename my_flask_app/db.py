@@ -1,16 +1,30 @@
+# my_flask_app/db.py
 import mysql.connector
-from mysql.connector import Error
-
+from flask import current_app
 
 def get_db_connection():
+    # Fügen Sie Ihre Datenbankverbindungsdetails hinzu
+    connection = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        passwd="Password00123",
+        database="test"
+    )
+    return connection
+
+def execute_query(query, params=None):
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    result = None
     try:
-        connection = mysql.connector.connect(
-            host="127.0.0.1",
-            user="root",
-            passwd="password",
-            database="pizza"
-        )
-        return connection
-    except Error as e:
-        print(f"Fehler bei der Verbindung zur MySQL-Datenbank: {e}")
-        return None
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        result = cursor.fetchall()
+    except Exception as e:
+        current_app.logger.error(f"Error executing query: {e}")
+    finally:
+        cursor.close()
+        connection.close()
+    return result
