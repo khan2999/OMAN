@@ -10,7 +10,7 @@
             background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
             background-size: cover;
             background-repeat: no-repeat;
-            height: 100vh; /* Adjusted for full viewport height */
+            height: 100vh;
             margin: 0;
             color: white;
             display: flex;
@@ -86,9 +86,9 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 15px;
             border-radius: 4px;
-            width: 24%; /* Adjusted width for results boxes */
+            width: 24%;
             box-sizing: border-box;
-            margin-bottom: 10px; /* Increased margin for better separation */
+            margin-bottom: 10px;
             color: white;
             text-align: center;
         }
@@ -102,7 +102,7 @@
             background: rgba(0, 0, 0, 0.7);
             padding: 15px;
             border-radius: 4px;
-            width: 100%; /* Full width for chart boxes */
+            width: 100%;
             box-sizing: border-box;
             margin-bottom: 20px;
             color: white;
@@ -113,12 +113,12 @@
     display: flex;
     justify-content: space-between;
     width: 100%;
-    margin-bottom: 20px; /* Increased margin between chart rows */
+    margin-bottom: 20px;
 }
 
 .half-chart-box {
-    width: calc(50% - 10px); /* Adjusted width for half-sized chart boxes */
-    margin-right: 10px; /* Added margin between chart boxes */
+    width: calc(50% - 10px);
+    margin-right: 10px;
 }
 
 .chart-container {
@@ -126,12 +126,12 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 300px; /* Adjusted height for chart containers */
+    height: 300px;
 }
 
 .chart {
-    max-width: 100%; /* Ensure the chart respects its container width */
-    max-height: 100%; /* Ensure the chart respects its container height */
+    max-width: 100%;
+    max-height: 100%;
 }
 
         .menu {
@@ -236,37 +236,38 @@
         </div>
 
         <div class="charts-row">
-        <div class="half-chart-box">
-            <div class="chart-box">
-                <h2>Top Stores by Income</h2>
-                <div class="chart-container">
-                    <canvas id="topStoresChart" class="chart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="half-chart-box">
-            <div class="chart-box">
-                <h2>Pizza Size Frequency</h2>
-                <div class="chart-container">
-                    <canvas id="orderSizeChart" class="chart"></canvas>
-                </div>
-            </div>
-        </div>
-        <div class="half-chart-box">
-            <div class="chart-box">
-                <h2>Customer Types</h2>
-                <div class="chart-container">
-                    <canvas id="customerTypesChart" class="chart"></canvas>
-                </div>
+    <div class="half-chart-box">
+        <div class="chart-box">
+            <h2>Top 5 Stores by Income</h2>
+            <div class="chart-container">
+                <canvas id="topStoresChart" class="chart"></canvas>
             </div>
         </div>
     </div>
+    <div class="half-chart-box">
+        <div class="chart-box">
+            <h2>Top 5 products</h2>
+            <div class="chart-container">
+                <canvas id="topProductsChart" class="chart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="half-chart-box">
+        <div class="chart-box">
+            <h2>Customer Types</h2>
+            <div class="chart-container">
+                <canvas id="customerTypesChart" class="chart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 </main>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     let topStoresChart;
-    let orderSizeChart;
+    let topProductsChart;
     let incomeTimelineChart;
     let customerTypesChart;
 
@@ -284,9 +285,9 @@
     .then(data => {
         updateBoxes(data);
         updateTopStoresChart(period);
-        updateOrderSizeChart(period);
+        updateTopProductsChart(period);
         updateIncomeTimelineChart(period);
-        updateCustomerTypesChart(period); // Call the new function to update customer types chart
+        updateCustomerTypesChart(period);
     })
     .catch(error => {
         console.error('Error fetching data:', error);
@@ -340,24 +341,24 @@
                     scales: {
                         x: {
                             ticks: {
-                                color: 'white' // X-axis labels color
+                                color: 'white'
                             }
                         },
                         y: {
                             ticks: {
-                                color: 'white' // Y-axis labels color
+                                color: 'white'
                             }
                         }
                     },
                     plugins: {
                         legend: {
                             labels: {
-                                color: 'white' // Legend labels color
+                                color: 'white'
                             }
                         },
                         tooltip: {
-                            titleColor: 'white', // Tooltip title color
-                            bodyColor: 'white' // Tooltip body color
+                            titleColor: 'white',
+                            bodyColor: 'white'
                         }
                     }
                 }
@@ -368,64 +369,92 @@
         });
     }
 
-    function updateOrderSizeChart(period) {
-        fetch('/order_size_data', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
+   function updateTopProductsChart(period) {
+    fetch('/top_products', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ period: period })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Received Top Products data:', data);
+
+        if (!Array.isArray(data.top_products)) {
+            console.error('Data received is not an array:', data);
+            throw new Error('Data received is not an array');
+        }
+
+        const convertedData = data.top_products.map(product => {
+            console.log('Product entry:', product);
+            return {
+                name: product.Name || product.name || 'Unknown Product',
+                total_sales: Number(product.total_sales || 0)
+            };
+        });
+
+        console.log('Converted Top Products data:', convertedData);
+
+        if (topProductsChart) {
+            topProductsChart.destroy();
+        }
+        const labels = convertedData.map(product => product.name);
+        const values = convertedData.map(product => product.total_sales);
+        const ctx = document.getElementById('topProductsChart').getContext('2d');
+        topProductsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Top 5 Selling Products by Category',
+                    data: values,
+                    backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 1
+                }]
             },
-            body: JSON.stringify({ period: period })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (orderSizeChart) {
-                orderSizeChart.destroy();
-            }
-            const labels = data.order_sizes.map(size => size.order_size);
-            const values = data.order_sizes.map(size => size.count);
-            const ctx = document.getElementById('orderSizeChart').getContext('2d');
-            orderSizeChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Order Sizes',
-                        data: values,
-                        backgroundColor: [
-                            'rgba(255, 99, 132, 0.2)',
-                            'rgba(54, 162, 235, 0.2)',
-                            'rgba(255, 206, 86, 0.2)',
-                            'rgba(75, 192, 192, 0.2)'
-                        ],
-                        borderColor: [
-                            'rgba(255, 99, 132, 1)',
-                            'rgba(54, 162, 235, 1)',
-                            'rgba(255, 206, 86, 1)',
-                            'rgba(75, 192, 192, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                 options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: 'white' // Legend labels color
-                            }
-                        },
-                        tooltip: {
-                            titleColor: 'white', // Tooltip title color
-                            bodyColor: 'white' // Tooltip body color
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        ticks: {
+                            color: 'white'
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            color: 'white'
                         }
                     }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: 'white'
+                        }
+                    },
+                    tooltip: {
+                        titleColor: 'white',
+                        bodyColor: 'white'
+                    }
                 }
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching order size data:', error);
+            }
         });
-    }
+    })
+    .catch(error => {
+        console.error('Error fetching or processing top products data:', error);
+    });
+}
+
+
+
+
 
 function updateIncomeTimelineChart(period = '') {
     fetch('/income_timeline', {
@@ -448,7 +477,7 @@ function updateIncomeTimelineChart(period = '') {
         console.log('Income data:', data);
 
         if (incomeTimelineChart) {
-            incomeTimelineChart.destroy(); // Destroy existing chart if it exists
+            incomeTimelineChart.destroy();
         }
 
         const { labels, values } = processDataForPeriod(data, period);
@@ -470,24 +499,24 @@ function updateIncomeTimelineChart(period = '') {
                 scales: {
                     x: {
                         ticks: {
-                            color: 'white' // X-axis labels color
+                            color: 'white'
                         }
                     },
                     y: {
                         ticks: {
-                            color: 'white' // Y-axis labels color
+                            color: 'white'
                         }
                     }
                 },
                 plugins: {
                     legend: {
                         labels: {
-                            color: 'white' // Legend labels color
+                            color: 'white'
                         }
                     },
                     tooltip: {
-                        titleColor: 'white', // Tooltip title color
-                        bodyColor: 'white' // Tooltip body color
+                        titleColor: 'white',
+                        bodyColor: 'white'
                     }
                 }
             }
@@ -561,7 +590,6 @@ function updateIncomeTimelineChart(period = '') {
     let values = [];
 
     if (period === 'last_week' || period === 'last_month') {
-        // Aggregate data by date
         const dailyData = {};
 
         data.forEach(item => {
@@ -614,7 +642,6 @@ function updateIncomeTimelineChart(period = '') {
         }
     }
 
-    // Initial call to populate the data and charts
     document.addEventListener('DOMContentLoaded', () => {
         getData('');
     });
