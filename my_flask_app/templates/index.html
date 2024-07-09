@@ -46,9 +46,12 @@
         #controls {
             width: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             margin-bottom: 10px;
+        }
+        #controls button {
+            margin: 5px;
         }
         #chart-options {
             display: flex;
@@ -97,6 +100,7 @@
                 <button id="show-all">Show All</button>
                 <button id="update-chart">Update Data</button>
                 <button id="toggle-view">Show Selected Stores</button>
+                <button id="show-customers">Show Customers</button>
                 <label for="year-select">Select Year:</label>
                 <select id="year-select">
                     <!-- Options will be populated dynamically -->
@@ -139,6 +143,7 @@
         var chart, customerChart, orderChart, avgSpendingChart, distanceChart, crossSellChart;
         var availableYears = new Set();
         var markers = {};
+        var customerMarkers = {};
         var showingAllStores = true;
 
         function getMarkerSize(total) {
@@ -425,7 +430,7 @@
             .catch(error => console.error('Error fetching distance data:', error));
         }
 
-       var crossSellChart;
+        var crossSellChart;
 
         function updateCrossSellChart(selectedYear) {
             const storeIDs = Object.keys(selectedStores);
@@ -511,9 +516,6 @@
             })
             .catch(error => console.error('Fehler beim Verarbeiten der Cross-Sell-Daten:', error));
         }
-
-
-
 
         function fetchDataForStore(storeID, year) {
             const previousYear = year - 1;
@@ -652,19 +654,12 @@
             fetchDataForStore(storeID, 2022);
         });
 
-
-
-
-
-
-
         document.getElementById('update-chart').addEventListener('click', function() {
             const selectedYear = document.getElementById('year-select').value;
             Object.keys(selectedStores).forEach(storeID => {
                 fetchDataForStore(storeID, selectedYear);
             });
         });
-
 
         document.getElementById('update-chart').addEventListener('click', function() {
             const selectedYear = document.getElementById('year-select').value;
@@ -755,6 +750,36 @@
             showingAllStores = !showingAllStores;
         });
 
+        document.getElementById('show-customers').addEventListener('click', function() {
+            if (showingAllStores) {
+                Object.values(markers).forEach(marker => map.removeLayer(marker));
+                fetch('/customers/locations')
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(customer => {
+                            let marker = L.circleMarker([customer.latitude, customer.longitude], {
+                                radius: 5,
+                                color: 'blue',
+                                fillColor: 'blue',
+                                fillOpacity: 0.5,
+                                weight: 1
+                            }).addTo(map);
+
+                            marker.bindPopup(`<b>${customer.customerID}</b><br>${customer.city}, ${customer.state}`);
+                            customerMarkers[customer.customerID] = marker;
+                        });
+                    })
+                    .catch(error => console.error('Error fetching customer data:', error));
+                showingAllStores = false;
+                this.textContent = 'Show Stores';
+            } else {
+                Object.values(customerMarkers).forEach(marker => map.removeLayer(marker));
+                Object.values(markers).forEach(marker => map.addLayer(marker));
+                showingAllStores = true;
+                this.textContent = 'Show Customers';
+            }
+        });
+
         function highlightMarker(storeID) {
             Object.values(markers).forEach(marker => {
                 if (selectedStores[marker.options.storeID]) {
@@ -779,7 +804,7 @@
             }
         }
 
-       fetch('/stores')
+        fetch('/stores')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok ' + response.statusText);

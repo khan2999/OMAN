@@ -143,63 +143,6 @@ def product_portfolio():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/mapping', methods=['GET', 'POST'])
-def mapping():
-    data = None  # Initialize data variable
-
-    if request.method == 'POST':
-        selected_table = request.form['table']
-        selected_column = request.form['column']
-
-        connection = get_db_connection()
-        if connection:
-            try:
-                cursor = connection.cursor()
-                query = f"SELECT {selected_column} FROM {selected_table};"
-                cursor.execute(query)
-                data = cursor.fetchall()
-
-                cursor.close()
-                connection.close()
-            except mysql.connector.Error as error:
-                return f"Error connecting to MySQL database: {error}"
-
-    return render_template('index.html', data=data)
-
-
-@app.route('/customer_map', methods=['GET'])
-def show_map_customer():
-    connection = get_db_connection()
-    if connection:
-        try:
-            cursor = connection.cursor(dictionary=True)
-            cursor.execute("""
-                SELECT 
-                    s.storeID, 
-                    s.latitude, 
-                    s.longitude, 
-                    s.city, 
-                    s.state, 
-                    YEAR(o.orderDate) as year, 
-                    MONTH(o.orderDate) as month,
-                    COALESCE(ROUND(SUM(o.total), 2), 0) as total
-                FROM stores s
-                LEFT JOIN orders o ON s.storeID = o.storeID
-                GROUP BY s.storeID, s.latitude, s.longitude, s.city, s.state, YEAR(o.orderDate), MONTH(o.orderDate)
-                ORDER BY s.storeID, year, month
-            """)
-            stores = cursor.fetchall()
-
-            cursor.close()
-            connection.close()
-
-            return jsonify(stores)
-
-        except mysql.connector.Error as error:
-            return jsonify({"error": str(error)})
-    else:
-        return jsonify({"error": "Verbindung zur Datenbank konnte nicht hergestellt werden"})
-
 
 @app.route('/product_sales_distribution', methods=['GET'])
 def product_sales_distribution():
@@ -230,42 +173,6 @@ def product_sales_distribution():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-
-@app.route('/store_customer_locations', methods=['GET'])
-def store_customer_locations():
-    connection = get_db_connection()
-    if connection:
-        try:
-            cursor = connection.cursor(dictionary=True)
-            start_time = time.time()
-            cursor.execute("""
-                SELECT s.storeID, s.latitude AS store_latitude, s.longitude AS store_longitude, 
-                       s.city AS store_city, s.state AS store_state, 
-                       c.customerID, c.latitude AS customer_latitude, c.longitude AS customer_longitude
-                FROM stores s
-                JOIN orders o ON s.storeID = o.storeID
-                JOIN customers c ON o.customerID = c.customerID
-            """)
-            data = cursor.fetchall()
-            end_time = time.time()
-
-            logging.debug(f"Query time: {end_time - start_time} seconds")
-
-            cursor.close()
-            connection.close()
-
-            return jsonify(data)
-        except mysql.connector.Error as error:
-            logging.error(f"Error fetching data: {error}")
-            return jsonify({"error": str(error)})
-    else:
-        logging.error("Error connecting to database")
-        return jsonify({"error": "Connection to the database could not be established"})
-
-@app.route('/map', methods=['GET'])
-def show_map():
-    return render_template('map.html')
 
 
 #show data after launch time
@@ -357,32 +264,6 @@ def sales_trends():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/customer_insights', methods=['GET'])
-def customer_insights():
-    try:
-        cursor = mydb.cursor(dictionary=True)
-        query = """
-        SELECT
-            c.customerID,
-            c.latitude,
-            c.longitude,
-            COUNT(o.orderID) AS total_orders
-        FROM
-            customers c
-            LEFT JOIN orders o ON c.customerID = o.customerID
-        GROUP BY
-            c.customerID,
-            c.latitude,
-            c.longitude
-        ORDER BY
-            total_orders DESC
-        LIMIT 20;
-        """
-        cursor.execute(query)
-        data = cursor.fetchall()
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/order_fulfillment', methods=['GET'])
 def order_fulfillment():

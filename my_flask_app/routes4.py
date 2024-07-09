@@ -5,8 +5,6 @@ from my_flask_app.db import get_db_connection,  execute_query
 import mysql.connector
 import logging
 import os
-import geopy.distance
-import psycopg2
 
 
 @app.route('/favicon.ico')
@@ -255,3 +253,17 @@ def get_orders(storeID):
     print(f"Order data für Store {storeID} und Jahr {year}: {order_data}")
 
     return jsonify(order_data if order_data else {"error": "Error fetching order data"})
+
+@app.route('/customers/locations', methods=['GET'])
+def get_customer_locations():
+    query = """
+        SELECT 
+            c.customerID, 
+            c.latitude, 
+            c.longitude
+        FROM customers c
+        JOIN orders o ON c.customerID = o.customerID
+        GROUP BY c.customerID, c.latitude, c.longitude
+    """
+    customers = execute_query(query)
+    return jsonify(customers if customers else {"error": "Error fetching customers data"})
