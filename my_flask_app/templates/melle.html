@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="../static/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> <!-- Plotly for xcharts -->
 </head>
 <body>
 <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -19,10 +20,10 @@
     <div class="collapse navbar-collapse" id="navbarNav">
         <ul class="navbar-nav ml-auto">
             <li class="nav-item">
-                <a class="nav-link" href="/kpi_reports">KPI Reports</a>
+                <a class="nav-link" href="/charts">More Charts for Analysis</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="/charts">More Charts for Analysis</a>
+                <a class="nav-link" href="/Kpi_Report">KPI-Report</a> <!-- New XCharts button -->
             </li>
             <li class="nav-item">
                 <button id="darkModeToggle" class="btn btn-secondary">Dark Mode</button>
@@ -31,58 +32,57 @@
     </div>
 </nav>
 <div class="container-fluid p-0 d-flex flex-column" style="flex-grow: 1;">
-<div class="container mt-4">
-    <h1 class="text-center my-4">Manager Dashboard</h1>
-    <div class="filter-container row mb-4">
-        <div class="col-md-3 mb-3">
-            <select id="chartSelector" class="filter form-control" onchange="showChart(this.value)">
-                <option value="total_sales_by_category" data-filters="category region date">Total Sales by Category
-                </option>
-                <option value="sales_trends_over_time" data-filters="date">Sales Trends Over Time</option>
-                <option value="top_selling_products" data-filters="category">Top Selling Products</option>
-                <option value="customer_distribution" data-filters="region">Customer Distribution by states</option>
-                <option value="average_order_value" data-filters="">Average Order Value</option>
-                <option value="customer_growth" data-filters="states">Customer Growth</option>
-                <option value="product_details" data-filters="category">Product Details (Price by SKU)</option>
-            </select>
+    <div class="container mt-4">
+        <h1 class="text-center my-4">Manager Dashboard</h1>
+        <div class="filter-container row mb-4">
+            <div class="col-md-3 mb-3">
+                <select id="chartSelector" class="filter form-control" onchange="showChart(this.value)">
+                    <option value="total_sales_by_category" data-filters="category region date">Total Sales by Category</option>
+                    <option value="sales_trends_over_time" data-filters="date">Sales Trends Over Time</option>
+                    <option value="top_selling_products" data-filters="category">Top Selling Products</option>
+                    <option value="customer_distribution" data-filters="region">Customer Distribution by States</option>
+                    <option value="average_order_value" data-filters="">Average Order Value</option>
+                    <option value="customer_growth" data-filters="states">Customer Growth</option>
+                    <option value="product_details" data-filters="category">Product Details (Price by SKU)</option>
+                </select>
+            </div>
+            <div id="dateFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
+                <input type="date" id="startDate" class="filter form-control" placeholder="Start Date">
+                <input type="date" id="endDate" class="filter form-control mt-2" placeholder="End Date">
+            </div>
+            <div id="categoryFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
+                <select id="categorySelector" class="filter form-control">
+                    <option value="">All Categories</option>
+                    <option value="Pizza">Pizza</option>
+                    <option value="Drinks">Drinks</option>
+                    <!-- Add more categories as needed -->
+                </select>
+            </div>
+            <div id="regionFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
+                <select id="regionSelector" class="filter form-control">
+                    <option value="">All Regions</option>
+                    <option value="North">North</option>
+                    <option value="South">South</option>
+                    <!-- Add more regions as needed -->
+                </select>
+            </div>
+            <div class="col-md-3 mb-3">
+                <select id="stateSelector" class="filter form-control">
+                    <option value="">All States</option>
+                    <!-- The states will be dynamically populated -->
+                </select>
+            </div>
+            <div class="col-md-3 mb-3">
+                <button id="filterButton" class="btn btn-primary w-100">Show Chart</button>
+            </div>
         </div>
-        <div id="dateFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
-            <input type="date" id="startDate" class="filter form-control" placeholder="Start Date">
-            <input type="date" id="endDate" class="filter form-control mt-2" placeholder="End Date">
-        </div>
-        <div id="categoryFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
-            <select id="categorySelector" class="filter form-control">
-                <option value="">All Categories</option>
-                <option value="Pizza">Pizza</option>
-                <option value="Drinks">Drinks</option>
-                <!-- Add more categories as needed -->
-            </select>
-        </div>
-        <div id="regionFilters" class="col-md-3 mb-3 filter-group" style="display:none;">
-            <select id="regionSelector" class="filter form-control">
-                <option value="">All Regions</option>
-                <option value="North">North</option>
-                <option value="South">South</option>
-                <!-- Add more regions as needed -->
-            </select>
-        </div>
-        <div class="col-md-3 mb-3">
-            <select id="stateSelector" class="filter form-control">
-                <option value="">All States</option>
-                <!-- The states will be dynamically populated -->
-            </select>
-        </div>
-        <div class="col-md-3 mb-3">
-            <button id="filterButton" class="btn btn-primary w-100">Show Chart</button>
-        </div>
-    </div>
 
-    <div id="chartContainer">
-        <div class="spinner" id="loadingSpinner" style="display:none;">Loading...</div>
-        <div id="chart" style="width: 100%; height: 400px;"></div>
+        <div id="chartContainer">
+            <div class="spinner" id="loadingSpinner" style="display:none;">Loading...</div>
+            <div id="chart" style="width: 100%; height: 400px;"></div>
+        </div>
     </div>
 </div>
-    </div>
 <script src="../static/js/scripts.js"></script>
 </body>
 </html>

@@ -1,14 +1,16 @@
 import json
 import logging
 import re
-import sqlite3
 from decimal import Decimal
 from math import radians, cos, sin, asin, sqrt
+
 import mysql.connector
 import plotly.graph_objects as go
 import plotly.io as pio
 from flask import jsonify
-from flask import render_template, request, send_file
+from flask import render_template, request
+from plotly.subplots import make_subplots
+
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
 
@@ -45,7 +47,6 @@ def decimal_to_float(data):
     elif isinstance(data, Decimal):
         return float(data)
     return data
-
 
 
 queries = {
@@ -125,112 +126,179 @@ queries = {
 }
 
 
-@app.route('/kpi_data', methods=['GET'])
-def kpi_data():
-    kpis = {}
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
+@app.route('/drilldown', methods=['GET'])
+def drilldown_data():
+    try:
+        # Determine drill-down type based on query parameters
+        category = request.args.get('category')
+        product_name = request.args.get('product_name')
+        store_id = request.args.get('store_id')
 
-    date_filter = ""
-    params = []
+        if category:
+            # Drill down by category
+            query = """
+                    SELECT p.Name, SUM(o.nItems) AS total_quantity_sold
+                    FROM orderItems oi
+                    JOIN products p ON oi.SKU = p.SKU
+                    JOIN orders o ON oi.orderID = o.orderID
+                    WHERE p.Category = %s
+                    GROUP BY p.Name
+                    ORDER BY total_quantity_sold DESC;
+                """
+            params = (category,)
+        elif product_name:
+            # Drill down to product details
+            query = """
+                    SELECT SKU, Name, Price, Category, Size, Ingredients, Launch
+                    FROM products
+                    WHERE Name = %s;
+                """
+            params = (product_name,)
+        elif store_id:
+            # Add store drill down logic if needed
+            return jsonify({"error": "Store drill-down not implemented"}), 400
+        else:
+            return jsonify({"error": "Invalid drill-down parameters"}), 400
 
-    if start_date and end_date:
-        date_filter = "WHERE orderDate BETWEEN %s AND %s"
-        params = [start_date, end_date]
+        # Execute query and fetch results
+        data = execute_query(query, params)
 
-    # Average Order Value
-    avg_order_value_query = f"""
-           SELECT AVG(o.total) AS average_order_value
-           FROM orders o
-           {date_filter}
-       """
-    avg_order_value = execute_query(avg_order_value_query, params)[0][0]
-    kpis['average_order_value'] = avg_order_value if avg_order_value is not None else 0
+        # Convert decimals to floats
+        formatted_data = decimal_to_float(data)
 
-    top_stores_by_revenue_query = f"""
-      SELECT s.storeID, s.city, SUM(o.total) AS total_revenue
-      FROM orders o 
-      JOIN stores s ON o.storeID = s.storeID
-      {date_filter}
-      GROUP BY s.storeID, s.city
-      ORDER BY total_revenue DESC
-      LIMIT 10;
-    """
-    top_stores_by_revenue = execute_query(top_stores_by_revenue_query, params)
-    kpis['top_stores_by_revenue'] = decimal_to_float(top_stores_by_revenue)
+        # Return results in JSON format
+        return jsonify(formatted_data)
 
-    # Debugging: Print the top stores by revenue
-    print(f"Top Stores by Revenue: {kpis['top_stores_by_revenue']}")
-
-    # Order Frequency
-    order_frequency_query = f"""
-        SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
-        FROM (
-            SELECT customerID, COUNT(orderID) AS order_count
-            FROM orders
-            {date_filter}
-            GROUP BY customerID
-        ) AS subquery;
-    """
-    order_frequency = execute_query(order_frequency_query, params)
-    kpis['order_frequency'] = decimal_to_float(order_frequency)
-
-    # Conversion Rate
-    conversion_rate_query = f"""
-        SELECT ROUND((COUNT(o.orderID) / COUNT(DISTINCT o.customerID)) * 100, 2) AS conversion_rate
-        FROM orders o
-        {date_filter};
-    """
-    conversion_rate = execute_query(conversion_rate_query, params)
-    kpis['conversion_rate'] = decimal_to_float(conversion_rate)
-
-    return jsonify(kpis)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-@app.route('/kpi_reports', methods=['GET', 'POST'])
-def kpi_reports():
-    kpi_data = {}
+def fetch_data(query):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query)
+    columns = [column[0] for column in cursor.description]
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return columns, results
 
-    queries = {
-        "average_order_value": "SELECT AVG(o.total) AS average_order_value FROM orders o",
-        "top_stores_by_revenue": """
-                   SELECT 
-  s.storeID, 
-  s.city, 
-  SUM(o.total) AS total_revenue
-FROM 
-  orders o 
-  JOIN stores s ON o.storeID = s.storeID
-GROUP BY 
-  s.storeID, 
-  s.city
-ORDER BY 
-  total_revenue DESC
-LIMIT 10;
-                """,
+@app.route('/Kpi_Report')
+def index2():
+    return render_template('Kpi_Report.html')
 
-        "order_frequency": """
-            SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
+@app.route('/api/new_vs_returning_customers')
+def new_vs_returning_customers():
+    try:
+        columns, results = fetch_data(
+            """
+            SELECT SUM(is_new_customer) AS new_customers, SUM(NOT is_new_customer) AS returning_customers
             FROM (
-                SELECT customerID, COUNT(orderID) AS order_count
-                FROM orders
-                GROUP BY customerID
-            ) AS subquery;
-        """,
-        "conversion_rate": """
-            SELECT ROUND((COUNT(orderID) / COUNT(DISTINCT customerID)) * 100, 2) AS conversion_rate
-            FROM orders;
-        """
-    }
+                SELECT customers.customerID, MAX(CASE WHEN orders.orderID IS NULL THEN 1 ELSE 0 END) AS is_new_customer
+                FROM customers
+                LEFT JOIN orders ON customers.customerID = orders.customerID
+                GROUP BY customers.customerID
+            ) AS customer_status;
+            """
+        )
+        labels = [columns[0], columns[1]]
+        values = [results[0][0], results[0][1]]
+        fig = go.Figure(data=[go.Pie(labels=labels, values=values)])
+        fig.update_layout(title="New vs. Returning Customers")
+        return jsonify(pio.to_json(fig, pretty=True))
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching new vs returning customers data: {error}")
+        return jsonify({"error": "Database error"}), 500
 
-    for kpi, query in queries.items():
-        if '{filter_clause}' in query:
-            query = query.format(filter_clause="")
-        data = execute_query(query)
-        kpi_data[kpi] = decimal_to_float(data)
+@app.route('/api/popular_products')
+def popular_products():
+    try:
+        columns, results = fetch_data(
+            """
+            SELECT products.Name, COUNT(orderitems.SKU) AS frequency
+            FROM orderitems
+            JOIN products ON orderitems.SKU = products.SKU
+            GROUP BY products.Name
+            ORDER BY frequency DESC;
+            """
+        )
+        x_values = [row[0] for row in results]
+        y_values = [row[1] for row in results]
+        fig = go.Figure(data=[go.Bar(x=x_values, y=y_values)])
+        fig.update_layout(xaxis_title=columns[0], yaxis_title=columns[1], title='Popular Products')
+        return jsonify(pio.to_json(fig, pretty=True))
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching popular products data: {error}")
+        return jsonify({"error": "Database error"}), 500
 
-    return render_template('kpi_reports.html', kpi_data=json.dumps(kpi_data))
+@app.route('/api/revenue_growth')
+def revenue_growth():
+    try:
+        columns, results = fetch_data(
+            """
+            SELECT DATE_FORMAT(orderDate, '%Y-%m') AS month,
+                   SUM(total) AS total_revenue,
+                   (SUM(total) - LAG(SUM(total), 1, 0) OVER (ORDER BY DATE_FORMAT(orderDate, '%Y-%m'))) /
+                   LAG(SUM(total), 1, 0) OVER (ORDER BY DATE_FORMAT(orderDate, '%Y-%m')) * 100 AS revenue_growth
+            FROM orders
+            GROUP BY DATE_FORMAT(orderDate, '%Y-%m');
+            """
+        )
+        x_values = [row[0] for row in results]
+        y_values_revenue = [row[1] for row in results]
+        y_values_growth = [row[2] for row in results]
 
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=x_values, y=y_values_revenue, name='Total Revenue'))
+        fig.add_trace(go.Scatter(x=x_values, y=y_values_growth, name='Revenue Growth %'))
+        fig.update_layout(title='Revenue Growth Over Time', yaxis2=dict(title='Revenue Growth %', overlaying='y', side='right'))
+        return jsonify(pio.to_json(fig, pretty=True))
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching revenue growth data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+@app.route('/api/conversion_rate')
+def conversion_rate():
+    try:
+        columns, results = fetch_data(
+            """
+            SELECT COUNT(DISTINCT orders.customerID) / COUNT(DISTINCT customers.customerID) * 100 AS conversion_rate
+            FROM customers
+            LEFT JOIN orders ON customers.customerID = orders.customerID;
+            """
+        )
+        value = results[0][0]  # Get the conversion rate from the results
+        fig = go.Figure(go.Indicator(
+            mode="gauge+number",
+            value=value,
+            title={'text': "Conversion Rate"},
+            gauge={'axis': {'range': [None, 100]}}
+        ))
+        return jsonify(pio.to_json(fig, pretty=True))
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching conversion rate data: {error}")
+        return jsonify({"error": "Database error"}), 500
+
+@app.route('/api/order_frequency')
+def order_frequency():
+    try:
+        columns, results = fetch_data(
+            """
+            SELECT customerID, COUNT(orderID) AS order_frequency
+            FROM orders
+            GROUP BY customerID
+            ORDER BY order_frequency DESC
+            LIMIT 10;
+            """
+        )
+        x_values = [row[0] for row in results]
+        y_values = [row[1] for row in results]
+        fig = go.Figure(data=[go.Bar(x=x_values, y=y_values)])
+        fig.update_layout(xaxis_title=columns[0], yaxis_title=columns[1], title='Top 10 Customers by Order Frequency')
+        return jsonify(pio.to_json(fig, pretty=True))
+    except mysql.connector.Error as error:
+        app.logger.error(f"Error fetching order frequency data: {error}")
+        return jsonify({"error": "Database error"}), 500
 
 def fetch_chart_data():
     chart_data = {}
