@@ -5,8 +5,6 @@ from my_flask_app.db import get_db_connection,  execute_query
 import mysql.connector
 import logging
 import os
-import geopy.distance
-import psycopg2
 
 
 @app.route('/favicon.ico')
@@ -210,5 +208,62 @@ def get_cross_sell_analysis(storeID):
     ORDER BY storeID, year, count DESC;
     """
     params = (storeID, year) if year else (storeID,)
-    cross_sell_data = execute_query(query, params)
-    return jsonify(cross_sell_data if cross_sell_data else {"error": "Error fetching cross sell analysis data"})
+    try:
+        cross_sell_data = execute_query(query, params)
+        if cross_sell_data:
+            return jsonify(cross_sell_data)
+        else:
+            return jsonify({"error": "No data found"})
+    except Exception as e:
+        print(f"Error fetching cross sell analysis data for Store {storeID} and Year {year}: {e}")
+        return jsonify({"error": "Error fetching cross sell analysis data"})
+
+
+@app.route('/customerscount/<storeID>', methods=['GET'])
+def get_customers(storeID):
+    year = request.args.get('year')
+    query = """
+    SELECT storeID, YEAR(orderDate) AS year, COUNT(DISTINCT customerID) AS customer_count
+    FROM orders
+    WHERE storeID = %s
+    """ + (" AND YEAR(orderDate) = %s" if year else "") + """
+    GROUP BY storeID, YEAR(orderDate)
+    """
+    params = (storeID, year) if year else (storeID,)
+    customer_data = execute_query(query, params)
+
+    print(f"Customer data für Store {storeID} und Jahr {year}: {customer_data}")
+
+    return jsonify(customer_data if customer_data else {"error": "Error fetching customer data"})
+
+
+@app.route('/orderscount/<storeID>', methods=['GET'])
+def get_orders(storeID):
+    year = request.args.get('year')
+    query = """
+    SELECT storeID, YEAR(orderDate) AS year, COUNT(*) AS order_count
+    FROM orders
+    WHERE storeID = %s
+    """ + (" AND YEAR(orderDate) = %s" if year else "") + """
+    GROUP BY storeID, YEAR(orderDate)
+    """
+    params = (storeID, year) if year else (storeID,)
+    order_data = execute_query(query, params)
+
+    print(f"Order data für Store {storeID} und Jahr {year}: {order_data}")
+
+    return jsonify(order_data if order_data else {"error": "Error fetching order data"})
+
+@app.route('/customers/locations', methods=['GET'])
+def get_customer_locations():
+    query = """
+        SELECT 
+            c.customerID, 
+            c.latitude, 
+            c.longitude
+        FROM customers c
+        JOIN orders o ON c.customerID = o.customerID
+        GROUP BY c.customerID, c.latitude, c.longitude
+    """
+    customers = execute_query(query)
+    return jsonify(customers if customers else {"error": "Error fetching customers data"})

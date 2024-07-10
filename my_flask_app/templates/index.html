@@ -46,9 +46,12 @@
         #controls {
             width: 100%;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
             margin-bottom: 10px;
+        }
+        #controls button {
+            margin: 5px;
         }
         #chart-options {
             display: flex;
@@ -97,6 +100,7 @@
                 <button id="show-all">Show All</button>
                 <button id="update-chart">Update Data</button>
                 <button id="toggle-view">Show Selected Stores</button>
+                <button id="show-customers">Show Customers</button>
                 <label for="year-select">Select Year:</label>
                 <select id="year-select">
                     <!-- Options will be populated dynamically -->
@@ -112,10 +116,11 @@
                 <thead>
                     <tr>
                         <th>Store</th>
-                        <th>Umsatz-Delta zum Vorjahr (%)</th>
-                        <th>Umsatz-Jahr</th>
-                        <th>Kunden-Delta zum Vorjahr (%)</th>
-                        <th>Kunden-Jahr</th>
+                        <th>Delta zum Vorjahr</th>
+                        <th>Umsatz</th>
+                        <th>Delta zum Vorjahr (%)</th>
+                        <th>Kunden</th>
+                        <th>Welta zum Vorjahr</th>
                         <th>Bestellungen-Jahr</th>
                     </tr>
                 </thead>
@@ -138,6 +143,7 @@
         var chart, customerChart, orderChart, avgSpendingChart, distanceChart, crossSellChart;
         var availableYears = new Set();
         var markers = {};
+        var customerMarkers = {};
         var showingAllStores = true;
 
         function getMarkerSize(total) {
@@ -424,36 +430,64 @@
             .catch(error => console.error('Error fetching distance data:', error));
         }
 
+        var crossSellChart;
+
         function updateCrossSellChart(selectedYear) {
             const storeIDs = Object.keys(selectedStores);
 
             const datasetsPromises = storeIDs.map(storeID => {
                 return fetch(`/cross_sell_analysis/${storeID}?year=${selectedYear}`)
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Netzwerkantwort war nicht ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        const labels = [];
-                        const counts = [];
-                        data.forEach(row => {
-                            labels.push(`${row.product1_name} & ${row.product2_name}`);
-                            counts.push(row.count);
-                        });
+                        console.log(`Daten für Store ${storeID} und Jahr ${selectedYear}:`, data);
+
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+
+                        if (data.length === 0) {
+                            console.warn(`Keine Daten für Store ${storeID} und Jahr ${selectedYear} erhalten`);
+                            return null;
+                        }
+
+                        const labels = data.map(row => `${row.product1_name} & ${row.product2_name}`);
+                        const counts = data.map(row => row.count);
 
                         return {
-                            label: `Store ${storeID}`,
-                            data: counts,
-                            backgroundColor: selectedStores[storeID].color,
-                            borderColor: selectedStores[storeID].color,
-                            borderWidth: 1
+                            storeID: storeID,  // Speichern Sie die Store-ID zur späteren Verwendung
+                            labels: labels,    // Speichern Sie die Labels zur späteren Verwendung
+                            dataset: {
+                                label: `Store ${storeID}`,
+                                data: counts,
+                                backgroundColor: selectedStores[storeID].color,
+                                borderColor: selectedStores[storeID].color,
+                                borderWidth: 1
+                            }
                         };
-                    });
+                    })
+                    .catch(error => console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, error));
             });
 
-            Promise.all(datasetsPromises).then(datasets => {
+            Promise.all(datasetsPromises).then(results => {
+                const datasets = results.filter(result => result !== null).map(result => result.dataset);
+
+                if (datasets.length === 0) {
+                    console.warn('Keine gültigen Daten für Cross-Sell-Chart erhalten');
+                    return;
+                }
+
                 if (crossSellChart) {
                     crossSellChart.destroy();
                 }
 
-                const labels = datasets.length > 0 ? datasets[0].labels : [];
+                // Nehmen Sie die Labels vom ersten Datensatz, da sie für alle gleich sein sollten
+                const labels = results[0].labels;
 
                 crossSellChart = new Chart(document.getElementById('cross-sell-chart'), {
                     type: 'bar',
@@ -467,7 +501,7 @@
                             x: {
                                 title: {
                                     display: true,
-                                    text: 'Product Pairs'
+                                    text: 'Products'
                                 }
                             },
                             y: {
@@ -480,9 +514,73 @@
                     }
                 });
             })
-            .catch(error => console.error('Error fetching cross-sell data:', error));
+            .catch(error => console.error('Fehler beim Verarbeiten der Cross-Sell-Daten:', error));
         }
 
+        function fetchDataForStore(storeID, year) {
+            const previousYear = year - 1;
+
+            return Promise.all([
+                fetch(`/customerscount/${storeID}?year=${year}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+                        console.log(`Kundendaten für Store ${storeID} und Jahr ${year}:`, data);
+                        return { type: 'customers', year, data };
+                    }),
+                fetch(`/orderscount/${storeID}?year=${year}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID}:`, data.error);
+                            return null;
+                        }
+                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${year}:`, data);
+                        return { type: 'orders', year, data };
+                    }),
+                fetch(`/customerscount/${storeID}?year=${previousYear}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID} im Vorjahr:`, data.error);
+                            return null;
+                        }
+                        console.log(`Kundendaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        return { type: 'customers', year: previousYear, data };
+                    }),
+                fetch(`/orderscount/${storeID}?year=${previousYear}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID} im Vorjahr:`, data.error);
+                            return null;
+                        }
+                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        return { type: 'orders', year: previousYear, data };
+                    })
+            ]).then(results => {
+                results.forEach(result => {
+                    if (result) {
+                        if (result.type === 'customers') {
+                            selectedStores[storeID].customerCounts = selectedStores[storeID].customerCounts || {};
+                            result.data.forEach(row => {
+                                selectedStores[storeID].customerCounts[row.year] = row.customer_count;
+                            });
+                        } else if (result.type === 'orders') {
+                            selectedStores[storeID].orders = selectedStores[storeID].orders || {};
+                            result.data.forEach(row => {
+                                selectedStores[storeID].orders[row.year] = row.order_count;
+                            });
+                        }
+                    }
+                });
+
+                updateTable(year); // Update the table for the current year
+            }).catch(error => console.error('Fehler beim Abrufen der Daten:', error));
+        }
 
         function updateTable(selectedYear) {
             const tableBody = document.getElementById('table-body');
@@ -491,20 +589,28 @@
             Object.values(selectedStores).forEach(store => {
                 const previousYear = selectedYear - 1;
 
+                // Berechnung des Umsatz-Delta zum Vorjahr
                 const salesDelta = store.totals && store.totals[previousYear]
                     ? ((store.totals[selectedYear] - store.totals[previousYear]) / store.totals[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const salesYear = store.totals && store.totals[selectedYear] ? store.totals[selectedYear] : 'N/A';
 
+                // Berechnung des Kunden-Delta zum Vorjahr
                 const customerDelta = store.customerCounts && store.customerCounts[previousYear]
                     ? ((store.customerCounts[selectedYear] - store.customerCounts[previousYear]) / store.customerCounts[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const customerYear = store.customerCounts && store.customerCounts[selectedYear] ? store.customerCounts[selectedYear] : 'N/A';
 
+                // Berechnung des Bestellungs-Delta zum Vorjahr
                 const ordersDelta = store.orders && store.orders[previousYear]
                     ? ((store.orders[selectedYear] - store.orders[previousYear]) / store.orders[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const ordersYear = store.orders && store.orders[selectedYear] ? store.orders[selectedYear] : 'N/A';
+
+                // Konsolenausgabe zur Überprüfung der Berechnungen
+                console.log(`Store: ${store.storeID}, Sales Previous Year: ${store.totals[previousYear]}, Sales Selected Year: ${store.totals[selectedYear]}, Sales Delta: ${salesDelta}`);
+                console.log(`Store: ${store.storeID}, Customers Previous Year: ${store.customerCounts[previousYear]}, Customers Selected Year: ${store.customerCounts[selectedYear]}, Customer Delta: ${customerDelta}`);
+                console.log(`Store: ${store.storeID}, Orders Previous Year: ${store.orders[previousYear]}, Orders Selected Year: ${store.orders[selectedYear]}, Orders Delta: ${ordersDelta}`);
 
                 const row = document.createElement('tr');
                 row.style.backgroundColor = store.color; // Set the background color of the row
@@ -542,6 +648,18 @@
 
             console.log('Table updated:', tableBody.innerHTML); // Log the updated table
         }
+
+        // Beispielaufruf der Funktion für jedes ausgewählte Geschäft und Jahr
+        Object.keys(selectedStores).forEach(storeID => {
+            fetchDataForStore(storeID, 2022);
+        });
+
+        document.getElementById('update-chart').addEventListener('click', function() {
+            const selectedYear = document.getElementById('year-select').value;
+            Object.keys(selectedStores).forEach(storeID => {
+                fetchDataForStore(storeID, selectedYear);
+            });
+        });
 
         document.getElementById('update-chart').addEventListener('click', function() {
             const selectedYear = document.getElementById('year-select').value;
@@ -632,169 +750,182 @@
             showingAllStores = !showingAllStores;
         });
 
-        function highlightMarker(storeID) {
-            Object.values(markers).forEach(marker => {
-                if (selectedStores[marker.options.storeID]) {
-                    marker.setStyle({
-                        fillColor: selectedStores[marker.options.storeID].color,
-                        color: selectedStores[marker.options.storeID].color
-                    });
-                } else {
-                    marker.setStyle({
-                        fillColor: marker.options.originalColor,
-                        color: marker.options.originalColor
-                    });
+        document.getElementById('show-customers').addEventListener('click', function() {
+            if (showingAllStores) {
+                Object.values(markers).forEach(marker => map.removeLayer(marker));
+                fetch('/customers/locations')
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(customer => {
+                            let marker = L.circleMarker([customer.latitude, customer.longitude], {
+                                radius: 5,
+                                color: 'blue',
+                                fillColor: 'blue',
+                                fillOpacity: 0.5,
+                                weight: 1
+                            }).addTo(map);
+
+                            marker.bindPopup(`<b>${customer.customerID}</b><br>${customer.city}, ${customer.state}`);
+                            customerMarkers[customer.customerID] = marker;
+                        });
+                    })
+                    .catch(error => console.error('Error fetching customer data:', error));
+                showingAllStores = false;
+                this.textContent = 'Show Stores';
+            } else {
+                Object.values(customerMarkers).forEach(marker => map.removeLayer(marker));
+                Object.values(markers).forEach(marker => map.addLayer(marker));
+                showingAllStores = true;
+                this.textContent = 'Show Customers';
+            }
+        });
+
+        fetch('/stores')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(data => {
+            let stores = {};
+            data.forEach(store => {
+                if (!stores[store.storeID]) {
+                    stores[store.storeID] = {
+                        latitude: store.latitude,
+                        longitude: store.longitude,
+                        city: store.city,
+                        state: store.state,
+                        totals: {},
+                        monthlyTotals: {},
+                        customerCounts: {},
+                        orders: {},
+                        years: []
+                    };
+                }
+                if (!stores[store.storeID].monthlyTotals[store.year]) {
+                    stores[store.storeID].monthlyTotals[store.year] = Array(12).fill(0);
+                }
+                stores[store.storeID].totals[store.year] = (stores[store.storeID].totals[store.year] || 0) + store.total;
+                stores[store.storeID].monthlyTotals[store.year][store.month - 1] += store.total;
+                stores[store.storeID].customerCounts[store.year] = store.customerCount;
+                stores[store.storeID].orders[store.year] = store.ordersCount;
+                availableYears.add(store.year);
+                if (!stores[store.storeID].years.includes(store.year)) {
+                    stores[store.storeID].years.push(store.year);
                 }
             });
 
-            if (markers[storeID]) {
-                markers[storeID].setStyle({
-                    fillColor: selectedStores[storeID].color,
-                    color: selectedStores[storeID].color,
-                    weight: 2
-                });
-            }
-        }
+            const yearSelect = document.getElementById('year-select');
+            availableYears.forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            });
 
-        fetch('/stores')
-            .then(response => response.json())
-            .then(data => {
-                let stores = {};
-                data.forEach(store => {
-                    if (!stores[store.storeID]) {
-                        stores[store.storeID] = {
-                            latitude: store.latitude,
-                            longitude: store.longitude,
-                            city: store.city,
-                            state: store.state,
-                            totals: {},
-                            monthlyTotals: {},
-                            customerCounts: {},
-                            orders: {},
-                            years: []
+            const sortedStoreIDs = Object.keys(stores).sort((a, b) => {
+                const totalA = Object.values(stores[a].totals).reduce((x, y) => x + y, 0);
+                const totalB = Object.values(stores[b].totals).reduce((x, y) => x + y, 0);
+                return totalB - totalA;
+            });
+
+            sortedStoreIDs.forEach(storeID => {
+                let store = stores[storeID];
+                let totalSales = Object.values(store.totals).reduce((a, b) => a + b, 0);
+                let markerSize = getMarkerSize(totalSales);
+
+                let popupContent = `<b>${storeID}</b><br>${store.city}, ${store.state}<br>`;
+                let prevTotal = null;
+                let lastArrow = '';
+                let lastDiff = 0;
+
+                for (let year in store.totals) {
+                    let total = store.totals[year];
+                    let arrow = '';
+                    let delta = '';
+
+                    if (prevTotal !== null) {
+                        let diff = total - prevTotal;
+                        if (diff > 0) {
+                            arrow = '▲';
+                            delta = `(+${diff.toFixed(2)})`;
+                            lastArrow = '▲';
+                            lastDiff = diff;
+                        } else if (diff < 0) {
+                            arrow = '▼';
+                            delta = `(${diff.toFixed(2)})`;
+                            lastArrow = '▼';
+                            lastDiff = diff;
+                        }
+                    }
+
+                    prevTotal = total;
+
+                    popupContent += `Year ${year}: $${total} <span class="${arrow === '▲' ? 'up-arrow' : 'down-arrow'}">${arrow}</span> ${delta}<br>`;
+                }
+
+                let markerColor = lastArrow === '▲' ? 'green' : 'red';
+                store.color = getRandomColor();
+
+                let marker = L.circleMarker([store.latitude, store.longitude], {
+                    radius: markerSize,
+                    color: 'blue',  // Set the border color to blue
+                    fillColor: markerColor,
+                    fillOpacity: 0.5,
+                    weight: 3,  // Set the border thickness
+                    originalColor: markerColor,
+                    storeID: storeID
+                }).addTo(map);
+
+                marker.bindPopup(popupContent);
+
+                marker.on('click', function() {
+                    if (selectedStores[storeID]) {
+                        markers[storeID].setStyle({ fillColor: marker.options.originalColor });
+                        delete selectedStores[storeID];
+                    } else {
+                        selectedStores[storeID] = {
+                            storeID: storeID,
+                            totals: store.totals,
+                            monthlyTotals: store.monthlyTotals,
+                            customerCounts: store.customerCounts,
+                            orders: store.orders,
+                            years: store.years,
+                            color: store.color
                         };
+                        markers[storeID].setStyle({ fillColor: store.color });
+                        highlightMarker(storeID);
                     }
-                    if (!stores[store.storeID].monthlyTotals[store.year]) {
-                        stores[store.storeID].monthlyTotals[store.year] = Array(12).fill(0);
-                    }
-                    stores[store.storeID].totals[store.year] = (stores[store.storeID].totals[store.year] || 0) + store.total;
-                    stores[store.storeID].monthlyTotals[store.year][store.month - 1] += store.total;
-                    stores[store.storeID].customerCounts[store.year] = store.customerCount;
-                    stores[store.storeID].orders[store.year] = store.ordersCount;
-                    availableYears.add(store.year);
-                    if (!stores[store.storeID].years.includes(store.year)) {
-                        stores[store.storeID].years.push(store.year);
-                    }
-                });
+                    const selectedYear = document.getElementById('year-select').value;
+                    const selectedCharts = Array.from(document.querySelectorAll('#chart-options input:checked')).map(input => input.value);
 
-                const yearSelect = document.getElementById('year-select');
-                availableYears.forEach(year => {
-                    const option = document.createElement('option');
-                    option.value = year;
-                    option.textContent = year;
-                    yearSelect.appendChild(option);
-                });
+                    showChart(selectedCharts);
 
-                const sortedStoreIDs = Object.keys(stores).sort((a, b) => {
-                    const totalA = Object.values(stores[a].totals).reduce((x, y) => x + y, 0);
-                    const totalB = Object.values(stores[b].totals).reduce((x, y) => x + y, 0);
-                    return totalB - totalA;
-                });
-
-                sortedStoreIDs.forEach(storeID => {
-                    let store = stores[storeID];
-                    let totalSales = Object.values(store.totals).reduce((a, b) => a + b, 0);
-                    let markerSize = getMarkerSize(totalSales);
-
-                    let popupContent = `<b>${storeID}</b><br>${store.city}, ${store.state}<br>`;
-                    let prevTotal = null;
-                    let lastArrow = '';
-                    let lastDiff = 0;
-
-                    for (let year in store.totals) {
-                        let total = store.totals[year];
-                        let arrow = '';
-                        let delta = '';
-
-                        if (prevTotal !== null) {
-                            let diff = total - prevTotal;
-                            if (diff > 0) {
-                                arrow = '▲';
-                                delta = `(+${diff.toFixed(2)})`;
-                                lastArrow = '▲';
-                                lastDiff = diff;
-                            } else if (diff < 0) {
-                                arrow = '▼';
-                                delta = `(${diff.toFixed(2)})`;
-                                lastArrow = '▼';
-                                lastDiff = diff;
-                            }
+                    selectedCharts.forEach(chart => {
+                        if (chart === 'chart') {
+                            updateChart(selectedYear);
+                        } else if (chart === 'customer-chart') {
+                            updateCustomerChart(selectedYear);
+                        } else if (chart === 'order-chart') {
+                            updateOrderChart(selectedYear);
+                        } else if (chart === 'avg-spending-chart') {
+                            updateAvgSpendingChart(selectedYear);
+                        } else if (chart === 'distance-chart') {
+                            updateDistanceChart(selectedYear);
+                        } else if (chart === 'cross-sell-chart') {
+                            updateCrossSellChart(selectedYear);
+                        } else if (chart === 'data-table') {
+                            updateTable(selectedYear);
                         }
-
-                        prevTotal = total;
-
-                        popupContent += `Year ${year}: $${total} <span class="${arrow === '▲' ? 'up-arrow' : 'down-arrow'}">${arrow}</span> ${delta}<br>`;
-                    }
-
-                    let markerColor = lastArrow === '▲' ? 'green' : 'red';
-                    store.color = getRandomColor();
-
-                    let marker = L.circleMarker([store.latitude, store.longitude], {
-                        radius: markerSize,
-                        color: markerColor,
-                        fillColor: markerColor,
-                        fillOpacity: 0.5,
-                        weight: 1,
-                        originalColor: markerColor,
-                        storeID: storeID
-                    }).addTo(map);
-
-                    marker.bindPopup(popupContent);
-
-                    marker.on('click', function() {
-                        if (selectedStores[storeID]) {
-                            markers[storeID].setStyle({ fillColor: marker.options.originalColor, color: marker.options.originalColor });
-                            delete selectedStores[storeID];
-                        } else {
-                            selectedStores[storeID] = {
-                                storeID: storeID,
-                                totals: store.totals,
-                                monthlyTotals: store.monthlyTotals,
-                                customerCounts: store.customerCounts,
-                                orders: store.orders,
-                                years: store.years,
-                                color: store.color
-                            };
-                            highlightMarker(storeID);
-                        }
-                        const selectedYear = document.getElementById('year-select').value;
-                        const selectedCharts = Array.from(document.querySelectorAll('#chart-options input:checked')).map(input => input.value);
-
-                        showChart(selectedCharts);
-
-                        selectedCharts.forEach(chart => {
-                            if (chart === 'chart') {
-                                updateChart(selectedYear);
-                            } else if (chart === 'customer-chart') {
-                                updateCustomerChart(selectedYear);
-                            } else if (chart === 'order-chart') {
-                                updateOrderChart(selectedYear);
-                            } else if (chart === 'avg-spending-chart') {
-                                updateAvgSpendingChart(selectedYear);
-                            } else if (chart === 'distance-chart') {
-                                updateDistanceChart(selectedYear);
-                            } else if (chart === 'cross-sell-chart') {
-                                updateCrossSellChart(selectedYear);
-                            } else if (chart === 'data-table') {
-                                updateTable(selectedYear);
-                            }
-                        });
                     });
-
-                    markers[storeID] = marker;
                 });
-            })
-            .catch(error => console.error('Error fetching store data:', error));
+
+                markers[storeID] = marker;
+            });
+        })
+        .catch(error => console.error('Error fetching store data:', error));
+
     </script>
 </body>
 </html>
