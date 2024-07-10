@@ -3,45 +3,130 @@
 <head>
     <title>XCharts Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; }
-        .container { width: 80%; margin: 0 auto; text-align: center; }
-        h1 { color: #333; }
-        #api-dropdown { margin-bottom: 20px; padding: 8px; border: 1px solid #ccc; }
-        #plot-container { width: 100%; height: 500px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .container {
+            flex: 1;
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #api-dropdown, .btn {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 300px;
+            display: inline-block;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        #api-dropdown:hover, .btn:hover {
+            border-color: #007bff;
+        }
+
+        #plot-container {
+            width: 100%;
+            height: 500px;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .spinner div {
+            width: 18px;
+            height: 18px;
+            background-color: #007bff;
+            border-radius: 100%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .spinner div:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .spinner div:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
     </style>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', (event) => {
-        const apiDropdown = document.getElementById("api-dropdown");
-        const plotContainer = document.getElementById("plot-container");
+        document.addEventListener('DOMContentLoaded', () => {
+            const apiDropdown = document.getElementById("api-dropdown");
+            const plotContainer = document.getElementById("plot-container");
+            const spinner = document.querySelector('.spinner');
 
-        apiDropdown.addEventListener("change", function() {
-            const selectedApi = apiDropdown.value;
+            apiDropdown.addEventListener("change", function() {
+                const selectedApi = apiDropdown.value;
 
-            fetch(`/api/${selectedApi}`)
-                .then(response => response.json())
-                .then(data => {
-                    const figure = JSON.parse(data);
-                    Plotly.newPlot(plotContainer, figure.data, figure.layout);
-                })
-                .catch(error => {
-                    console.error('Error fetching data:', error);
-                    alert('Failed to load chart data.');
-                });
+                Plotly.purge(plotContainer);
+                spinner.style.display = 'block';
+
+                fetch(`/api/${selectedApi}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const figure = JSON.parse(data);
+                        Plotly.newPlot(plotContainer, figure.data, figure.layout);
+                        spinner.style.display = 'none';
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        alert('Failed to load chart data.');
+                        spinner.style.display = 'none';
+                    });
+            });
+
+            // Trigger the change event to load the default chart on page load
+            apiDropdown.dispatchEvent(new Event('change'));
         });
-    });
     </script>
 </head>
 <body>
     <div class="container">
         <h1>XCharts Dashboard</h1>
-        <select id="api-dropdown">
+        <select id="api-dropdown" class="btn">
             <option value="new_vs_returning_customers">New vs. Returning Customers</option>
             <option value="popular_products">Popular Products</option>
             <option value="revenue_growth">Revenue Growth</option>
             <option value="conversion_rate">Conversion Rate</option>
             <option value="order_frequency">Order Frequency</option>
         </select>
+        <div class="spinner"><div></div><div></div><div></div></div>
         <div id="plot-container"></div>
     </div>
 </body>

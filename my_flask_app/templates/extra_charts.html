@@ -5,41 +5,76 @@
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         .container {
+            flex: 1;
             width: 80%;
-            margin: 0 auto;
+            margin: 20px auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             text-align: center;
         }
 
         h1 {
             color: #333;
-        }
-
-        #view-charts-button {
-            padding: 10px 20px;
-            background-color: #007bff; /* Bootstrap blue */
-            color: white;
-            border: none;
-            cursor: pointer;
+            margin-bottom: 20px;
         }
 
         #plot-container {
-            display: none; /* Hide by default */
             width: 100%;
             height: 500px;
+            margin-top: 20px;
         }
 
-        #api-dropdown {
-            margin-bottom: 20px;
+        #api-dropdown, .filter {
             padding: 8px;
             border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        #plot-container {
-            width: 100%;
-            height: 500px;
+        .spinner {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .spinner div {
+            width: 18px;
+            height: 18px;
+            background-color: #333;
+            border-radius: 100%;
+            display: inline-block;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .spinner div:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .spinner div:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
         }
     </style>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -48,37 +83,37 @@
             const apiDropdown = document.getElementById("api-dropdown");
             const plotContainer = document.getElementById("plot-container");
             const filterContainer = document.getElementById("filter-container");
-            let viewChartsButton = document.getElementById("view-charts-button"); // Initial reference
+            const spinner = document.querySelector('.spinner');
             let currentApi = null;
+
             apiDropdown.addEventListener("change", async () => {
                 const selectedApi = apiDropdown.value;
                 currentApi = selectedApi;
 
                 Plotly.purge(plotContainer);
                 filterContainer.innerHTML = '';
+                spinner.style.display = 'block';
 
                 const response = await fetch(`/api/${selectedApi}`);
                 const data = await response.json();
 
+                spinner.style.display = 'none';
+
                 if (selectedApi === 'sales_by_day_of_week') {
-                    createBarPlot(data, 'Day of Week', 'Total Sales', 'Sales by Day of Week');
+                    createBarPlot(data, 'day_of_week', 'total_sales', 'Sales by Day of Week');
                 } else if (selectedApi === 'product_size_sales') {
                     createPieChart(data, 'Size', 'total_quantity_sold', 'Product Size Sales');
                 } else if (selectedApi === 'distance_analysis') {
-                    createScatterPlot(data, 'distance_bin', ['aov_mean', 'order_frequency_mean', 'total_sales_mean'], 'Distance Analysis');
+                    createScatterPlot(data, 'distance_bin', ['order_frequency_mean', 'total_sales_mean'], 'Distance Analysis');
                 } else if (selectedApi === 'store_performance_by_category') {
                     createStackedBarChart(data, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
                     createStoreCategoryFilters(data);
-                } else if (selectedApi === 'average_order_value_over_time') {
-                    createLineChart(data, 'month', 'average_order_value', 'Average Order Value Over Time');
-                } else if (selectedApi === 'store_performance_comparison') {
-                    createGroupedBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
                 } else if (selectedApi === 'customer_segmentation') {
                     createBubbleChart(data, 'total_spend', 'num_orders', 'city', 'state', 'Customer Segmentation');
+                } else if (selectedApi === 'store_performance_comparison') {
+                    createGroupedBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
                 } else if (selectedApi === 'inventory_turnover_rate') {
                     createBarPlot(data, 'SKU', 'turnover_rate', 'Inventory Turnover Rate');
-                } else if (selectedApi === 'trend_analysis') {
-                    createTrendAnalysisPlot(data, 'Sales Trend Analysis');
                 }
             });
 
@@ -90,26 +125,6 @@
                     x: x,
                     y: y,
                     type: 'bar'
-                };
-
-                const layout = {
-                    title: title,
-                    xaxis: {title: xAxisLabel},
-                    yaxis: {title: yAxisLabel}
-                };
-
-                Plotly.newPlot(plotContainer, [trace], layout);
-            }
-
-            function createLineChart(data, xAxisLabel, yAxisLabel, title) {
-                const x = data.map(item => item[xAxisLabel]);
-                const y = data.map(item => item[yAxisLabel]);
-
-                const trace = {
-                    x: x,
-                    y: y,
-                    type: 'scatter',
-                    mode: 'lines+markers'
                 };
 
                 const layout = {
@@ -144,21 +159,16 @@
                 const traces = yAxisLabels.map(label => {
                     return {
                         x: data.map(item => item[xAxisLabel]),
-                        y: data.map(item => item[label + '_mean']),
-                        error_y: {
-                            type: 'data',
-                            array: data.map(item => item[label + '_std']),
-                            visible: true
-                        },
-                        name: label,
-                        mode: 'markers'
+                        y: data.map(item => item[label]),
+                        mode: 'markers',
+                        name: label
                     };
                 });
 
                 const layout = {
                     title: title,
                     xaxis: {title: xAxisLabel},
-                    yaxis: {title: 'Mean Value'},
+                    yaxis: {title: 'Value'},
                     showlegend: true
                 };
 
@@ -195,10 +205,12 @@
 
                 const storeDropdown = document.createElement('select');
                 storeDropdown.id = 'store-filter';
+                storeDropdown.className = 'filter';
                 storeDropdown.innerHTML = '<option value="">All Stores</option>' + uniqueStoreIDs.map(id => `<option value="${id}">${id}</option>`).join('');
 
                 const categoryDropdown = document.createElement('select');
                 categoryDropdown.id = 'category-filter';
+                categoryDropdown.className = 'filter';
                 categoryDropdown.innerHTML = '<option value="">All Categories</option>' + uniqueCategories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
 
                 filterContainer.appendChild(storeDropdown);
@@ -212,15 +224,38 @@
                 const storeID = document.getElementById('store-filter').value;
                 const category = document.getElementById('category-filter').value;
 
-                const queryParams = new URLSearchParams({
-                    store_id: storeID,
-                    category: category
+                const response = await fetch('/api/filter_store_performance_by_category', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({store_id: storeID, category: category})
                 });
 
-                const response = await fetch(`/api/${currentApi}?${queryParams.toString()}`);
                 const filteredData = await response.json();
+                createStackedBarChart(filteredData, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
+            }
 
-                Plotly.react(plotContainer, filteredData.data, filteredData.layout);
+            function createBubbleChart(data, xAxisLabel, yAxisLabel, textLabel1, textLabel2, title) {
+                const trace = {
+                    x: data.map(item => item[xAxisLabel]),
+                    y: data.map(item => item[yAxisLabel]),
+                    mode: 'markers',
+                    marker: {
+                        size: data.map(item => Math.sqrt(item[yAxisLabel]) * 5),
+                        color: data.map(item => item[xAxisLabel])
+                    },
+                    text: data.map(item => `${item[textLabel1]}, ${item[textLabel2]}`)
+                };
+
+                const layout = {
+                    title: title,
+                    xaxis: {title: xAxisLabel},
+                    yaxis: {title: yAxisLabel},
+                    showlegend: false
+                };
+
+                Plotly.newPlot(plotContainer, [trace], layout);
             }
 
             function createGroupedBarChart(data, xAxisLabel, yAxisLabels, title) {
@@ -244,87 +279,27 @@
                 Plotly.newPlot(plotContainer, traces, layout);
             }
 
-            function createBubbleChart(data, xAxisLabel, yAxisLabel, textLabel1, textLabel2, title) {
-                const trace = {
-                    x: data.map(item => item[xAxisLabel]),
-                    y: data.map(item => item[yAxisLabel]),
-                    mode: 'markers',
-                    marker: {
-                        size: data.map(item => Math.sqrt(item[xAxisLabel]) * 5),
-                        color: data.map(item => item[textLabel2])
-                    },
-                    text: data.map(item => `${item[textLabel1]}, ${item[textLabel2]}`)
-                };
-
-                const layout = {
-                    title: title,
-                    xaxis: {title: xAxisLabel},
-                    yaxis: {title: yAxisLabel},
-                    showlegend: false
-                };
-
-                Plotly.newPlot(plotContainer, [trace], layout);
-            }
-
-            function createTrendAnalysisPlot(data, title) {
-                const x = data.map(item => item['month']);
-                const y = data.map(item => item['total_sales']);
-
-                const trace = {
-                    x: x,
-                    y: y,
-                    type: 'scatter',
-                    mode: 'lines+markers'
-                };
-
-                const layout = {
-                    title: title,
-                    xaxis: {title: 'Month'},
-                    yaxis: {title: 'Total Sales'}
-                };
-
-                Plotly.newPlot(plotContainer, [trace], layout);
-            }
-            function attachButtonListener() { // Function to attach listener
-                viewChartsButton.addEventListener("click", () => {
-                    plotContainer.style.display = 'block';
-                    viewChartsButton.style.display = 'none';
-                    apiDropdown.dispatchEvent(new Event('change'));
-                });
-            }
-
-            attachButtonListener();
-
-
-            viewChartsButton.addEventListener("click", () => { // Event listener here
-                plotContainer.style.display = 'block';
-                viewChartsButton.style.display = 'none';
-                apiDropdown.dispatchEvent(new Event('change')); // Trigger chart creation
-                 attachButtonListener();
-            });
+            // Trigger the change event to load the default chart on page load
+            apiDropdown.dispatchEvent(new Event('change'));
         });
     </script>
-
 </head>
 <body>
 <div class="container">
-    <h1>More chart to Analyse</h1>
+    <h1>Sales Dashboard</h1>
     <div id="filter-container"></div>
     <select id="api-dropdown">
         <option value="sales_by_day_of_week">Sales by Day of Week</option>
         <option value="product_size_sales">Product Size Sales</option>
         <option value="distance_analysis">Distance Analysis</option>
         <option value="store_performance_by_category">Store Performance by Category</option>
-        <option value="average_order_value_over_time">Average Order Value Over Time</option>
-        <option value="store_performance_comparison">Store Performance Comparison</option>
         <option value="customer_segmentation">Customer Segmentation</option>
+        <option value="store_performance_comparison">Store Performance Comparison</option>
         <option value="inventory_turnover_rate">Inventory Turnover Rate</option>
         <option value="trend_analysis">Trend Analysis</option>
     </select>
-    <button id="view-charts-button">View Charts</button>
+    <div class="spinner"><div></div><div></div><div></div></div>
     <div id="plot-container"></div>
-</div>
 </div>
 </body>
 </html>
-
