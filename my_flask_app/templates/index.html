@@ -77,6 +77,33 @@
             stroke: orange !important;
             stroke-width: 2 !important;
         }
+        .legend {
+            background: white;
+            padding: 10px;
+            margin-top: 10px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            border-radius: 5px;
+            position: absolute;
+            top: 760px; /* Adjust as needed */
+            left: 1px; /* Adjust as needed */
+        }
+        .legend .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        .legend .legend-color.green {
+            background: green;
+        }
+        .legend .legend-color.red {
+            background: red;
+        }
     </style>
 </head>
 <body>
@@ -103,7 +130,7 @@
                 <button id="show-customers">Show Customers</button>
                 <label for="year-select">Select Year:</label>
                 <select id="year-select">
-                    <!-- Options will be populated dynamically -->
+
                 </select>
             </div>
             <canvas id="chart" class="chart"></canvas>
@@ -125,9 +152,23 @@
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Data will be populated dynamically -->
+
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-color green"></div>
+            <span>Green marker: Increase in revenue in the last year</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color red"></div>
+            <span>Red marker: Decrease in revenue in the last year</span>
+        </div>
+        <div class="legend-item">
+            <span>Marker size: Dependent on store revenue</span>
         </div>
     </div>
 
@@ -439,20 +480,20 @@
                 return fetch(`/cross_sell_analysis/${storeID}?year=${selectedYear}`)
                     .then(response => {
                         if (!response.ok) {
-                            throw new Error('Netzwerkantwort war nicht ok ' + response.statusText);
+                            throw new Error('Network response was not ok ' + response.statusText);
                         }
                         return response.json();
                     })
                     .then(data => {
-                        console.log(`Daten für Store ${storeID} und Jahr ${selectedYear}:`, data);
+                        console.log(`Data for Store ${storeID} and Year ${selectedYear}:`, data);
 
                         if (data.error) {
-                            console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, data.error);
+                            console.error(`Error fetching cross-sell data for Store ${storeID}:`, data.error);
                             return null;
                         }
 
                         if (data.length === 0) {
-                            console.warn(`Keine Daten für Store ${storeID} und Jahr ${selectedYear} erhalten`);
+                            console.warn(`No data received for Store ${storeID} and Year ${selectedYear}`);
                             return null;
                         }
 
@@ -460,8 +501,8 @@
                         const counts = data.map(row => row.count);
 
                         return {
-                            storeID: storeID,  // Speichern Sie die Store-ID zur späteren Verwendung
-                            labels: labels,    // Speichern Sie die Labels zur späteren Verwendung
+                            storeID: storeID,  // Store the storeID for later use
+                            labels: labels,    // Store the labels for later use
                             dataset: {
                                 label: `Store ${storeID}`,
                                 data: counts,
@@ -471,14 +512,14 @@
                             }
                         };
                     })
-                    .catch(error => console.error(`Fehler beim Abrufen der Cross-Sell-Daten für Store ${storeID}:`, error));
+                    .catch(error => console.error(`Error fetching cross-sell data for Store ${storeID}:`, error));
             });
 
             Promise.all(datasetsPromises).then(results => {
                 const datasets = results.filter(result => result !== null).map(result => result.dataset);
 
                 if (datasets.length === 0) {
-                    console.warn('Keine gültigen Daten für Cross-Sell-Chart erhalten');
+                    console.warn('No valid data received for cross-sell chart');
                     return;
                 }
 
@@ -486,7 +527,7 @@
                     crossSellChart.destroy();
                 }
 
-                // Nehmen Sie die Labels vom ersten Datensatz, da sie für alle gleich sein sollten
+                // Take the labels from the first dataset, as they should be the same for all
                 const labels = results[0].labels;
 
                 crossSellChart = new Chart(document.getElementById('cross-sell-chart'), {
@@ -514,7 +555,7 @@
                     }
                 });
             })
-            .catch(error => console.error('Fehler beim Verarbeiten der Cross-Sell-Daten:', error));
+            .catch(error => console.error('Error processing cross-sell data:', error));
         }
 
         function fetchDataForStore(storeID, year) {
@@ -525,40 +566,40 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.error) {
-                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID}:`, data.error);
+                            console.error(`Error fetching customer data for Store ${storeID}:`, data.error);
                             return null;
                         }
-                        console.log(`Kundendaten für Store ${storeID} und Jahr ${year}:`, data);
+                        console.log(`Customer data for Store ${storeID} and Year ${year}:`, data);
                         return { type: 'customers', year, data };
                     }),
                 fetch(`/orderscount/${storeID}?year=${year}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.error) {
-                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID}:`, data.error);
+                            console.error(`Error fetching order data for Store ${storeID}:`, data.error);
                             return null;
                         }
-                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${year}:`, data);
+                        console.log(`Order data for Store ${storeID} and Year ${year}:`, data);
                         return { type: 'orders', year, data };
                     }),
                 fetch(`/customerscount/${storeID}?year=${previousYear}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.error) {
-                            console.error(`Fehler beim Abrufen der Kundendaten für Store ${storeID} im Vorjahr:`, data.error);
+                            console.error(`Error fetching customer data for Store ${storeID} in the previous year:`, data.error);
                             return null;
                         }
-                        console.log(`Kundendaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        console.log(`Customer data for Store ${storeID} and Year ${previousYear}:`, data);
                         return { type: 'customers', year: previousYear, data };
                     }),
                 fetch(`/orderscount/${storeID}?year=${previousYear}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.error) {
-                            console.error(`Fehler beim Abrufen der Bestelldaten für Store ${storeID} im Vorjahr:`, data.error);
+                            console.error(`Error fetching order data for Store ${storeID} in the previous year:`, data.error);
                             return null;
                         }
-                        console.log(`Bestelldaten für Store ${storeID} und Jahr ${previousYear}:`, data);
+                        console.log(`Order data for Store ${storeID} and Year ${previousYear}:`, data);
                         return { type: 'orders', year: previousYear, data };
                     })
             ]).then(results => {
@@ -579,7 +620,7 @@
                 });
 
                 updateTable(year); // Update the table for the current year
-            }).catch(error => console.error('Fehler beim Abrufen der Daten:', error));
+            }).catch(error => console.error('Error fetching data:', error));
         }
 
         function updateTable(selectedYear) {
@@ -589,25 +630,25 @@
             Object.values(selectedStores).forEach(store => {
                 const previousYear = selectedYear - 1;
 
-                // Berechnung des Umsatz-Delta zum Vorjahr
+                // Calculate sales delta from previous year
                 const salesDelta = store.totals && store.totals[previousYear]
                     ? ((store.totals[selectedYear] - store.totals[previousYear]) / store.totals[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const salesYear = store.totals && store.totals[selectedYear] ? store.totals[selectedYear] : 'N/A';
 
-                // Berechnung des Kunden-Delta zum Vorjahr
+                // Calculate customer delta from previous year
                 const customerDelta = store.customerCounts && store.customerCounts[previousYear]
                     ? ((store.customerCounts[selectedYear] - store.customerCounts[previousYear]) / store.customerCounts[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const customerYear = store.customerCounts && store.customerCounts[selectedYear] ? store.customerCounts[selectedYear] : 'N/A';
 
-                // Berechnung des Bestellungs-Delta zum Vorjahr
+                // Calculate orders delta from previous year
                 const ordersDelta = store.orders && store.orders[previousYear]
                     ? ((store.orders[selectedYear] - store.orders[previousYear]) / store.orders[previousYear] * 100).toFixed(2)
                     : 'N/A';
                 const ordersYear = store.orders && store.orders[selectedYear] ? store.orders[selectedYear] : 'N/A';
 
-                // Konsolenausgabe zur Überprüfung der Berechnungen
+                // Log calculations for verification
                 console.log(`Store: ${store.storeID}, Sales Previous Year: ${store.totals[previousYear]}, Sales Selected Year: ${store.totals[selectedYear]}, Sales Delta: ${salesDelta}`);
                 console.log(`Store: ${store.storeID}, Customers Previous Year: ${store.customerCounts[previousYear]}, Customers Selected Year: ${store.customerCounts[selectedYear]}, Customer Delta: ${customerDelta}`);
                 console.log(`Store: ${store.storeID}, Orders Previous Year: ${store.orders[previousYear]}, Orders Selected Year: ${store.orders[selectedYear]}, Orders Delta: ${ordersDelta}`);
@@ -649,7 +690,7 @@
             console.log('Table updated:', tableBody.innerHTML); // Log the updated table
         }
 
-        // Beispielaufruf der Funktion für jedes ausgewählte Geschäft und Jahr
+        // Example call of the function for each selected store and year
         Object.keys(selectedStores).forEach(storeID => {
             fetchDataForStore(storeID, 2022);
         });
