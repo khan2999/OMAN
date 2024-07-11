@@ -649,39 +649,6 @@ def customer_segmentation():
         return jsonify({"error": "Database error"}), 500
 
 
-@app.route('/api/trend_analysis', methods=['POST'])
-def trend_analysis():
-    try:
-        data = request.get_json()
-        metric = data['metric']
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        if metric == 'sales':
-            cursor.execute('''
-                SELECT 
-                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
-                SUM(o.total) AS total_sales
-                FROM orders o
-                GROUP BY month
-                ORDER BY month;
-            ''')
-        elif metric == 'orders':
-            cursor.execute('''
-                SELECT 
-                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
-                COUNT(o.orderID) AS num_orders
-                FROM orders o
-                GROUP BY month
-                ORDER BY month;
-            ''')
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching trend analysis data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
 
 @app.route('/api/inventory_turnover_rate')
 def inventory_turnover_rate():
@@ -918,39 +885,6 @@ def filter_inventory_turnover_rate():
         app.logger.error(f"Error fetching filtered inventory turnover rate data: {error}")
         return jsonify({"error": "Database error"}), 500
 
-
-@app.route('/api/trend_analysis', methods=['POST'])
-def trend_analysis1():
-    try:
-        data = request.get_json()
-        metric = data['metric']
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        if metric == 'sales':
-            cursor.execute('''
-                SELECT 
-                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
-                SUM(o.total) AS total_sales
-                FROM orders o
-                GROUP BY month
-                ORDER BY month;
-            ''')
-        elif metric == 'orders':
-            cursor.execute('''
-                SELECT 
-                DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
-                COUNT(o.orderID) AS num_orders
-                FROM orders o
-                GROUP BY month
-                ORDER BY month;
-            ''')
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching trend analysis data: {error}")
-        return jsonify({"error": "Database error"}), 500
 
 
 if __name__ == '__main__':

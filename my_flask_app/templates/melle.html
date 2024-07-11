@@ -25,19 +25,18 @@
             <li class="nav-item">
                 <a class="nav-link" href="/Kpi_Report">KPI-Report</a>
             </li>
-            <li class="nav-item">
-                <button id="darkModeToggle" class="btn btn-secondary">Dark Mode</button>
-            </li>
         </ul>
     </div>
 </nav>
 <div class="container-fluid d-flex flex-column p-0" style="flex-grow: 1;">
-    <div class="container-fluid mt-4">
+    <div class="container-fluid mt-4" style="flex-grow: 1; display: flex; flex-direction: column;">
         <h1 class="text-center my-4">Manager Dashboard</h1>
         <div class="filter-container row mb-4 justify-content-center">
             <div class="col-md-2 mb-3">
                 <select id="chartSelector" class="filter form-control" onchange="showChart(this.value)">
-                    <option value="total_sales_by_category" data-filters="category region date">Total Sales by Category</option>
+                    <option value="total_sales_by_category" data-filters="category region date">Total Sales by
+                        Category
+                    </option>
                     <option value="sales_trends_over_time" data-filters="date">Sales Trends Over Time</option>
                     <option value="top_selling_products" data-filters="category">Top Selling Products</option>
                     <option value="customer_distribution" data-filters="region">Customer Distribution by States</option>
@@ -79,7 +78,7 @@
 
         <div id="chartContainer" class="d-flex flex-grow-1 justify-content-center align-items-center">
             <div class="spinner" id="loadingSpinner" style="display:none;">Loading...</div>
-            <div id="chart" style="width: 100%; height: 80vh;"></div>
+            <div id="chart" style="width: 100%; height: 100%;"></div>
         </div>
     </div>
 </div>
