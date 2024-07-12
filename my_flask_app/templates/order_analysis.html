@@ -6,7 +6,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-image: url('{{ url_for('static', filename='pizza-background1.jpg') }}');
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
             background-size: cover;
             background-repeat: no-repeat;
             display: flex; 
@@ -23,7 +23,7 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        #main, #orderCountChart, #productChart {
+        #main, #orderCountChart, #productChart, #storeChart {
             width: 45%;
             height: 400px;
             margin-top: 20px;
@@ -83,6 +83,7 @@
         <div id="main"></div>
         <div id="orderCountChart"></div>
         <div id="productChart"></div>
+        <div id="storeChart"></div>
     </div>
 
     <!-- Load echarts -->
@@ -91,6 +92,7 @@
         let myChart;
         let orderCountChart;
         let productChart;
+        let storeChart;
 
         function validateAndGenerateChart(type) {
             const startYear = parseInt(document.getElementById('startYear').value);
@@ -101,6 +103,7 @@
                 document.getElementById('main').innerHTML = '';
                 document.getElementById('orderCountChart').innerHTML = '';
                 document.getElementById('productChart').innerHTML = '';
+                document.getElementById('storeChart').innerHTML = '';
             } else {
                 document.getElementById('errorMessage').style.display = 'none';
                 generateChart(type);
@@ -127,6 +130,7 @@
                 var chartDom = document.getElementById('main');
                 var orderCountChartDom = document.getElementById('orderCountChart');
                 var productChartDom = document.getElementById('productChart');
+                var storeChartDom = document.getElementById('storeChart');
 
                 if (myChart) {
                     myChart.dispose();
@@ -137,10 +141,14 @@
                 if (productChart) {
                     productChart.dispose();
                 }
+                if (storeChart) {
+                    storeChart.dispose();
+                }
 
                 myChart = echarts.init(chartDom);
                 orderCountChart = echarts.init(orderCountChartDom);
                 productChart = echarts.init(productChartDom);
+                storeChart = echarts.init(storeChartDom);
 
                 var option, orderCountOption;
 
@@ -293,6 +301,10 @@
                 myChart.setOption(option);
                 orderCountChart.setOption(orderCountOption);
 
+                myChart.on('click', function(params) {
+                    fetchStoresForCategory(params.name);
+                });
+
                 orderCountChart.on('click', function(params) {
                     fetchProductsForCategory(params.name);
                 });
@@ -347,6 +359,56 @@
             })
             .catch(error => console.error('Error fetching products for category:', error));
         }
+
+       function fetchStoresForCategory(category) {
+    const startYear = document.getElementById('startYear').value;
+    const endYear = document.getElementById('endYear').value;
+
+    fetch(`/store_orders_for_category?category=${category}&startYear=${startYear}&endYear=${endYear}`)
+    .then(response => response.json())
+    .then(data => {
+        console.log(data);
+        var storeChartDom = document.getElementById('storeChart');
+
+        if (storeChart) {
+            storeChart.dispose();
+        }
+
+        storeChart = echarts.init(storeChartDom);
+
+        var storeOption = {
+            title: {
+                text: `Store orders by ${category}`
+            },
+            tooltip: {
+                trigger: 'item',
+                formatter: '{a} <br/>{b}: {c} ({d}%)'
+            },
+            series: [
+                {
+                    name: 'Stores',
+                    type: 'pie',
+                    radius: '50%',
+                    data: data.map(store => ({
+                        value: store.count,
+                        name: store.city
+                    })),
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }
+            ]
+        };
+
+        storeChart.setOption(storeOption);
+    })
+    .catch(error => console.error('Error fetching stores for category:', error));
+}
+
     </script>
 </body>
 </html>
