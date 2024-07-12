@@ -5,7 +5,7 @@ from my_flask_app.db import get_db_connection,  execute_query
 import mysql.connector
 import logging
 import os
-
+import math
 
 @app.route('/favicon.ico')
 def favicon():
@@ -267,3 +267,33 @@ def get_customer_locations():
     """
     customers = execute_query(query)
     return jsonify(customers if customers else {"error": "Error fetching customers data"})
+
+
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 3959  # Radius of the Earth in miles
+    dLat = math.radians(lat2 - lat1)
+    dLon = math.radians(lon2 - lon1)
+    a = math.sin(dLat/2) * math.sin(dLat/2) + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dLon/2) * math.sin(dLon/2)
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    distance = R * c
+    return distance
+
+@app.route('/customers/near_store/<store_id>', methods=['GET'])
+def get_customers_near_store(store_id):
+    store_query = "SELECT latitude, longitude FROM stores WHERE storeID = %s"
+    store_location = execute_query(store_query, (store_id,))
+    if not store_location:
+        return jsonify({"error": "Store not found"}), 404
+
+    store_lat, store_lon = store_location[0]['latitude'], store_location[0]['longitude']
+    customers_query = "SELECT customerID, latitude, longitude FROM customers"
+    customers = execute_query(customers_query)
+
+    nearby_customers = [
+        customer for customer in customers
+        if haversine(store_lat, store_lon, customer['latitude'], customer['longitude']) <= 5
+    ]
+
+    return jsonify(nearby_customers)
