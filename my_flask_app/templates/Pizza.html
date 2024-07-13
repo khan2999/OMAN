@@ -35,7 +35,7 @@
             text-align: center;
             padding: 20px;
         }
-        #portfolio, #revenue-data, #sales-distribution, #sales-trend {
+        #portfolio, #revenue-data, #sales-distribution, #sales-trend, #sales-per-cost, #product-popularity {
             margin-top: 20px;
             float: left;
             width: 45%;
@@ -49,13 +49,19 @@
             margin: 5px;
             cursor: pointer;
         }
-        #revenue-chart-container, #portfolio-chart-container, #sales-distribution-chart-container, #sales-trend-chart-container {
+        #revenue-chart-container, #portfolio-chart-container, #sales-distribution-chart-container, #sales-trend-chart-container, #sales-per-cost-chart-container, #product-popularity-chart-container {
             width: 45%;
             max-width: 800px;
             margin-top: 20px;
             float: left;
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        #sales-trend-chart-container {
+            width: 1500px; /* Adjust width to 1500px */
+        }
+         #sales-per-cost-chart-container {
+            width: 1501px;
         }
         .clearfix::after {
             content: "";
@@ -75,8 +81,9 @@
         <button onclick="showRevenueOptions()">Show Revenue</button>
         <button onclick="showProductPortfolio()">Show Product Portfolio</button>
         <button onclick="showSalesTrend()">Show Sales Trend</button>
-        <button >Show other Analysis</button>
-
+        <button onclick="showSalesPerCost()">Show Sales per Cost</button>
+        <button onclick="showProductPopularity()">Show Product Popularity</button>
+        <button onclick="window.location.href='http://127.0.0.1:5000/'">Show other Analysis</button>
     </div>
 
     <div id="revenue-form-container" class="hidden">
@@ -103,6 +110,13 @@
             </select>
             <button type="submit">Fetch Revenue</button>
         </form>
+    </div>
+
+    <div id="pizza-select-container" class="hidden">
+        <label for="pizza-type">Select Pizza Type:</label>
+        <select id="pizza-type" onchange="fetchSalesPerCost()">
+            <!-- Options will be populated dynamically -->
+        </select>
     </div>
 
     <div class="chart-select hidden">
@@ -141,47 +155,99 @@
     <div class="clearfix">
         <div id="sales-trend" class="hidden"></div>
         <div id="sales-trend-chart-container" class="hidden">
-            <canvas id="sales-trend-chart" width="800" height="400"></canvas>
+            <canvas id="sales-trend-chart" width="1500" height="800"></canvas> <!-- Adjust canvas width to 1500px and height to 800px -->
         </div>
     </div>
 
+    <div class="clearfix">
+        <div id="sales-per-cost" class="hidden"></div>
+        <div id="sales-per-cost-chart-container" class="hidden">
+            <canvas id="sales-per-cost-chart" width="800" height="400"></canvas>
+        </div>
+    </div>
+
+    <div class="clearfix">
+        <div id="product-popularity" class="hidden"></div>
+        <div id="product-popularity-chart-container" class="hidden">
+            <canvas id="product-popularity-chart" width="800" height="400"></canvas>
+        </div>
+    </div>
+
+    <div id="product-popularity-container" class="hidden"></div> <!-- Add this line -->
+
     <script>
+        let portfolioChart, salesDistributionChart, salesTrendChart, salesPerCostChart, productPopularityChart;
+
         function showRevenueOptions() {
             document.getElementById('revenue-form-container').classList.remove('hidden');
             document.querySelector('.chart-select').classList.add('hidden');
-            // Hide other sections
-            document.getElementById('portfolio').classList.add('hidden');
-            document.getElementById('portfolio-chart-container').classList.add('hidden');
-            document.getElementById('sales-distribution').classList.add('hidden');
-            document.getElementById('sales-distribution-chart-container').classList.add('hidden');
-            document.getElementById('sales-trend').classList.add('hidden');
-            document.getElementById('sales-trend-chart-container').classList.add('hidden');
+            hideAllSections();
         }
 
         function showProductPortfolio() {
             document.getElementById('revenue-form-container').classList.add('hidden');
             document.querySelector('.chart-select').classList.remove('hidden');
-            // Hide other sections
-            document.getElementById('revenue-data').classList.add('hidden');
-            document.getElementById('revenue-chart-container').classList.add('hidden');
-            document.getElementById('sales-distribution').classList.add('hidden');
-            document.getElementById('sales-distribution-chart-container').classList.add('hidden');
-            document.getElementById('sales-trend').classList.add('hidden');
-            document.getElementById('sales-trend-chart-container').classList.add('hidden');
+            hideAllSections();
             fetchProductPortfolio();
         }
 
         function showSalesTrend() {
             document.getElementById('revenue-form-container').classList.add('hidden');
             document.querySelector('.chart-select').classList.add('hidden');
-            // Hide other sections
+            hideAllSections();
+            fetchSalesTrends();
+        }
+
+        function showSalesPerCost() {
+            document.getElementById('revenue-form-container').classList.add('hidden');
+            document.querySelector('.chart-select').classList.add('hidden');
+            hideAllSections();
+            fetchPizzaTypes();  // Fetch pizza types for the dropdown menu
+            document.getElementById('pizza-select-container').classList.remove('hidden');
+        }
+
+        function showProductPopularity() {
+            document.getElementById('revenue-form-container').classList.add('hidden');
+            document.querySelector('.chart-select').classList.add('hidden');
+            hideAllSections();
+            fetchProductPopularity();
+        }
+
+        function hideAllSections() {
             document.getElementById('portfolio').classList.add('hidden');
             document.getElementById('portfolio-chart-container').classList.add('hidden');
             document.getElementById('sales-distribution').classList.add('hidden');
             document.getElementById('sales-distribution-chart-container').classList.add('hidden');
             document.getElementById('revenue-data').classList.add('hidden');
             document.getElementById('revenue-chart-container').classList.add('hidden');
-            fetchSalesTrends();
+            document.getElementById('sales-trend').classList.add('hidden');
+            document.getElementById('sales-trend-chart-container').classList.add('hidden');
+            document.getElementById('sales-per-cost').classList.add('hidden');
+            document.getElementById('sales-per-cost-chart-container').classList.add('hidden');
+            document.getElementById('product-popularity').classList.add('hidden');
+            document.getElementById('product-popularity-chart-container').classList.add('hidden');
+            document.getElementById('pizza-select-container').classList.add('hidden');
+            document.getElementById('product-popularity-container').classList.add('hidden'); // Add this line
+        }
+
+        function fetchPizzaTypes() {
+            // This function fetches the pizza types and populates the dropdown menu
+            fetch('/pizza_types')
+                .then(response => response.json())
+                .then(data => {
+                    const pizzaTypeSelect = document.getElementById('pizza-type');
+                    pizzaTypeSelect.innerHTML = '';
+                    data.forEach(pizza => {
+                        const option = document.createElement('option');
+                        option.value = pizza;
+                        option.textContent = pizza;
+                        pizzaTypeSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    document.getElementById('error-message').innerText = 'Error fetching pizza types: ' + error;
+                    document.getElementById('error-message').style.display = 'block';
+                });
         }
 
         function fetchProductPortfolio() {
@@ -252,10 +318,10 @@
             };
 
             const ctx = document.getElementById('portfolio-chart').getContext('2d');
-            if (window.portfolioChart) {
-                window.portfolioChart.destroy();
+            if (portfolioChart) {
+                portfolioChart.destroy();
             }
-            window.portfolioChart = new Chart(ctx, {
+            portfolioChart = new Chart(ctx, {
                 type: chartType,
                 data: chartData,
                 options: {
@@ -361,10 +427,10 @@
             };
 
             const ctx = document.getElementById('sales-distribution-chart').getContext('2d');
-            if (window.salesDistributionChart) {
-                window.salesDistributionChart.destroy();
+            if (salesDistributionChart) {
+                salesDistributionChart.destroy();
             }
-            window.salesDistributionChart = new Chart(ctx, {
+            salesDistributionChart = new Chart(ctx, {
                 type: 'bar',
                 data: chartData,
                 options: {
@@ -410,10 +476,10 @@
                         document.getElementById('error-message').style.display = 'block';
                     } else {
                         const ctx = document.getElementById('sales-trend-chart').getContext('2d');
-                        if (window.salesTrendChart) {
-                            window.salesTrendChart.destroy();
+                        if (salesTrendChart) {
+                            salesTrendChart.destroy();
                         }
-                        window.salesTrendChart = new Chart(ctx, {
+                        salesTrendChart = new Chart(ctx, {
                             type: 'line',
                             data: data,
                             options: {
@@ -455,17 +521,125 @@
                 });
         }
 
+        function fetchSalesPerCost() {
+            const selectedPizza = document.getElementById('pizza-type').value;
+
+            fetch(`/sales_per_cost?pizza_type=${selectedPizza}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('error-message').innerText = data.error;
+                        document.getElementById('error-message').style.display = 'block';
+                    } else {
+                        const labels = ['Small', 'Medium', 'Large', 'Extra Large'];
+                        const quantities = labels.map(size => {
+                            const sizeData = data.find(item => item.size === size);
+                            return sizeData ? sizeData.total_quantity : 0;
+                        });
+
+                        const ctx = document.getElementById('sales-per-cost-chart').getContext('2d');
+                        if (salesPerCostChart) {
+                            salesPerCostChart.destroy();
+                        }
+                        salesPerCostChart = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [
+                                    {
+                                        label: 'Total Quantity Sold',
+                                        data: quantities,
+                                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                                        borderColor: 'rgba(75, 192, 192, 1)',
+                                        borderWidth: 1
+                                    }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: {
+                                    legend: {
+                                        position: 'top',
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: `Sales per Cost for ${selectedPizza}`
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        }
+                                    },
+                                    y: {
+                                        grid: {
+                                            display: true
+                                        },
+                                        beginAtZero: true
+                                    }
+                                }
+                            }
+                        });
+
+                        document.getElementById('sales-per-cost').classList.remove('hidden');
+                        document.getElementById('sales-per-cost-chart-container').classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('error-message').innerText = 'Error fetching sales per cost data: ' + error;
+                    document.getElementById('error-message').style.display = 'block';
+                });
+        }
+
+       function fetchProductPopularity() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error-message').style.display = 'none';
+
+            fetch('/product_popularity')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('loading').style.display = 'none';
+                    if (data.error) {
+                        document.getElementById('error-message').innerText = data.error;
+                        document.getElementById('error-message').style.display = 'block';
+                    } else {
+                        const container = document.getElementById('product-popularity-container');
+                        let html = '<h2>Product Popularity</h2><table class="data"><thead><tr><th>Product Name</th><th>Total Quantity Sold</th><th>Popularity</th></tr></thead><tbody>';
+                        data.forEach(item => {
+                            html += `<tr><td>${item.product_name}</td><td>${item.total_quantity}</td><td>${getStars(item.popularity)}</td></tr>`;
+                        });
+                        html += '</tbody></table>';
+                        container.innerHTML = html;
+                        container.classList.remove('hidden');
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('error-message').innerText = 'Error fetching product popularity data: ' + error;
+                    document.getElementById('error-message').style.display = 'block';
+                });
+        }
+
+        function getStars(popularity) {
+            const stars = popularity;
+            let starHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= stars) {
+                    starHtml += '<span style="color: gold;">&#9733;</span>';
+                } else {
+                    starHtml += '<span style="color: gray;">&#9733;</span>';
+                }
+            }
+            return starHtml;
+        }
+
         document.getElementById('revenue-form').addEventListener('submit', function(event) {
             event.preventDefault();
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error-message').style.display = 'none';
             // Hide portfolio data and chart
-            document.getElementById('portfolio').classList.add('hidden');
-            document.getElementById('portfolio-chart-container').classList.add('hidden');
-            document.getElementById('sales-distribution').classList.add('hidden');
-            document.getElementById('sales-distribution-chart-container').classList.add('hidden');
-            document.getElementById('sales-trend').classList.add('hidden');
-            document.getElementById('sales-trend-chart-container').classList.add('hidden');
+            hideAllSections();
             const startYear = document.getElementById('start-year').value;
             const endYear = document.getElementById('end-year').value;
             const quarter = document.getElementById('quarter').value;
@@ -549,8 +723,8 @@
 
         // Listen for changes in the chart type select element
         document.getElementById('chart-type').addEventListener('change', function() {
-            const labels = window.portfolioChart.data.labels;
-            const data = window.portfolioChart.data.datasets[0].data;
+            const labels = portfolioChart.data.labels;
+            const data = portfolioChart.data.datasets[0].data;
             createPortfolioChart(labels, data);
         });
     </script>
