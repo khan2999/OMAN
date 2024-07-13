@@ -38,20 +38,6 @@ body, html {
     color: #d3d3d3;
 }
 
-.navbar .btn {
-    background-color: #007bff;
-    color: #ffffff;
-    border: none;
-    border-radius: 5px;
-    padding: 5px 10px;
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
-
-.navbar .btn:hover {
-    background-color: #0056b3;
-}
-
 /* Main container styles */
 .container-fluid {
     flex: 1;
@@ -134,13 +120,45 @@ h1 {
 .btn-primary {
     background-color: #007bff;
     border-color: #007bff;
+    transition: background-color 0.3s, transform 0.3s;
 }
 
 .btn-primary:hover {
     background-color: #0056b3;
     border-color: #004085;
+    transform: scale(1.05);
 }
 
+.btn-primary:active {
+    background-color: #004085;
+    border-color: #002752;
+}
+
+.btn-animate {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.btn-animate::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 300%;
+    height: 300%;
+    background: rgba(255, 255, 255, 0.15);
+    transition: all 0.75s;
+    border-radius: 50%;
+    z-index: -1;
+    transform: translate(-50%, -50%) scale(0.25);
+}
+
+.btn-animate:hover::after {
+    transform: translate(-50%, -50%) scale(1);
+}
+
+/* Optional Secondary Button Styles */
 .btn-secondary {
     background-color: #6c757d;
     border-color: #6c757d;
@@ -149,6 +167,10 @@ h1 {
 .btn-secondary:hover {
     background-color: #5a6268;
     border-color: #545b62;
+    transform: scale(1.05);
 }
 
-
+.btn-secondary:active {
+    background-color: #545b62;
+    border-color: #3e4348;
+}

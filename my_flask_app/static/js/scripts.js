@@ -2,12 +2,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const chartSelector = document.getElementById('chartSelector');
     const dateFilters = document.getElementById('dateFilters');
     const categoryFilters = document.getElementById('categoryFilters');
-    const regionFilters = document.getElementById('regionFilters');
     const stateSelector = document.getElementById('stateSelector');
     const filterButton = document.getElementById('filterButton');
     const chartContainer = document.getElementById('chart');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const colorPalette = ['#2E86C1', '#28B463', '#E74C3C', '#F1C40F', '#9B59B6', '#F39C12', '#1ABC9C', '#D35400', '#7D3C98', '#34495E'];
+
+    const drillDownCharts = ['Total Sales by Product Category', 'Top Selling Products', 'Sales Trends Over Time', 'Product Details (Price by SKU)'];
 
     function showLoading() {
         loadingSpinner.style.display = 'block';
@@ -88,21 +89,23 @@ document.addEventListener('DOMContentLoaded', function () {
                     name: title,
                     type: chartType,
                     data: chartData,
-                    emphasis: { itemStyle: { color: 'green' } }
+                    emphasis: {
+                        itemStyle: { color: drillDownCharts.includes(title) ? 'green' : null }
+                    }
                 }],
                 toolbox: {
                     feature: {
                         dataView: { readOnly: false },
                         restore: {},
                         saveAsImage: {},
-                        dataZoom: {}, // Added data zoom
-                        magicType: { type: ['line', 'bar'] } // Added toggle between line and bar chart
+                        dataZoom: {},
+                        magicType: { type: ['line', 'bar'] }
                     }
                 },
                 dataZoom: [
                     { type: 'slider', start: 0, end: 100 },
                     { type: 'inside', start: 0, end: 100 }
-                ] // Added data zoom slider and inside zoom
+                ]
             };
         } else if (chartType === 'line') {
             option = {
@@ -162,27 +165,27 @@ document.addEventListener('DOMContentLoaded', function () {
                         dataView: { readOnly: false },
                         restore: {},
                         saveAsImage: {},
-                        dataZoom: {}, // Added data zoom
-                        magicType: { type: ['line', 'bar'] } // Added toggle between line and bar chart
+                        dataZoom: {},
+                        magicType: { type: ['line', 'bar'] }
                     }
                 },
                 dataZoom: [
                     { type: 'slider', start: 0, end: 100 },
                     { type: 'inside', start: 0, end: 100 }
-                ] // Added data zoom slider and inside zoom
+                ]
             }
         }
 
         chart.on('click', function (params) {
-            // Determine if drill-down button should be shown
-            const drillDownCharts = ['Total Sales by Product Category', 'Top Selling Products'];
+            const existingButton = document.querySelector('.drill-down-button');
+            if (existingButton) {
+                existingButton.remove();
+            }
+
             if (!drillDownCharts.includes(title)) {
                 return;
             }
 
-            if (document.querySelector('.drill-down-button')) {
-                document.querySelector('.drill-down-button').remove();
-            }
             const button = document.createElement('button');
             button.classList.add('drill-down-button');
             button.innerText = 'Drill Down';
@@ -192,9 +195,14 @@ document.addEventListener('DOMContentLoaded', function () {
                     fetchUrl = `/drilldown?category=${params.name}`;
                 } else if (title === 'Top Selling Products') {
                     fetchUrl = `/drilldown?product_name=${params.name}`;
+                } else if (title === 'Sales Trends Over Time') {
+                    fetchUrl = `/drilldown?trend=true`;
+                } else if (title === 'Product Details (Price by SKU)') {
+                    fetchUrl = `/drilldown?sku=${params.name}`;
                 } else {
                     return;
                 }
+                console.log('Fetching URL:', fetchUrl);
                 try {
                     showLoading();
                     const response = await fetch(fetchUrl);
@@ -202,6 +210,14 @@ document.addEventListener('DOMContentLoaded', function () {
                         throw new Error(`Error fetching drill-down data: ${response.status} ${response.statusText}`);
                     }
                     const data = await response.json();
+                    console.log('Drill-down data:', data);
+
+                    if (data.length === 0) {
+                        alert('No data available for the selected drill-down.');
+                        hideLoading();
+                        return;
+                    }
+
                     const drillDownLabels = data.map(item => item[0]);
                     const drillDownData = data.map(item => item[1]);
                     renderChart(drillDownData, drillDownLabels, 'bar', `Drill Down - ${params.name}`);
@@ -212,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     hideLoading();
                 }
             };
+
             chartContainer.appendChild(button);
         });
 
@@ -228,12 +245,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         let category = document.getElementById('categorySelector').value;
-        const region = document.getElementById('regionSelector').value;
         const state = document.getElementById('stateSelector').value;
         if (category === "Pizza") {
             category = "";
         }
-        fetch(`/filter?chart=${selectedChart}&startDate=${startDate}&endDate=${endDate}&category=${category}&region=${region}&state=${state}`)
+        fetch(`/filter?chart=${selectedChart}&startDate=${startDate}&endDate=${endDate}&category=${category}&state=${state}`)
             .then(response => response.json())
             .then(data => {
                 if (data.error) {
@@ -296,10 +312,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderChart(chartData, chartLabels, chartType, title);
                 hideLoading();
 
-                // Show/Hide Drill Down and Exit Drill Down buttons based on selected chart
-                const drillDownCharts = ['total_sales_by_category', 'top_selling_products'];
+                const drillDownChartsKeys = ['total_sales_by_category', 'top_selling_products', 'product_details', 'sales_trends_over_time'];
                 const drillDownButton = document.querySelector('.drill-down-button');
-                if (drillDownCharts.includes(selectedChart)) {
+                if (drillDownChartsKeys.includes(selectedChart)) {
                     if (!drillDownButton) {
                         const button = document.createElement('button');
                         button.classList.add('drill-down-button');
@@ -325,14 +340,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
         dateFilters.style.display = filters.includes('date') ? 'block' : 'none';
         categoryFilters.style.display = filters.includes('category') ? 'block' : 'none';
-        regionFilters.style.display = filters.includes('region') ? 'block' : 'none';
         stateSelector.style.display = filters.length > 0 ? 'block' : 'none';
     }
 
     chartSelector.addEventListener('change', updateFilters);
     filterButton.addEventListener('click', updateChart);
 
-    // Initialize and handle exit drill-down functionality
     const exitDrilldownButton = document.createElement('button');
     exitDrilldownButton.classList.add('exit-drill-down-button');
     exitDrilldownButton.innerText = 'Exit Drill Down';
@@ -343,6 +356,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     chartContainer.appendChild(exitDrilldownButton);
 
-    // Perform initial chart update to render default chart
     updateFilters();
 });

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Sales Dashboard</title>
+    <title>Sales Insights Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -97,6 +97,8 @@
                 const response = await fetch(`/api/${selectedApi}`);
                 const data = await response.json();
 
+                // Log the data for debugging
+                console.log("Fetched Data:", data);
                 spinner.style.display = 'none';
 
                 if (selectedApi === 'sales_by_day_of_week') {
@@ -109,7 +111,7 @@
                     createStackedBarChart(data, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
                     createStoreCategoryFilters(data);
                 } else if (selectedApi === 'customer_segmentation') {
-                    createBubbleChart(data, 'total_spend', 'num_orders', 'city', 'state', 'Customer Segmentation');
+                    createClusteredBarChart(data, 'customer_segment', ['total_spend', 'num_orders'], 'Customer Segmentation');
                 } else if (selectedApi === 'store_performance_comparison') {
                     createGroupedBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
                 } else if (selectedApi === 'inventory_turnover_rate') {
@@ -172,12 +174,12 @@
                     showlegend: true
                 };
 
-                Plotly.newPlot(plotContainer, traces, layout);
+                Plotly.newPlot('plot-container', traces, layout);
             }
 
             function createStackedBarChart(data, xAxisLabel, stackLabel, yAxisLabel, title) {
                 const uniqueXValues = [...new Set(data.map(item => item[xAxisLabel]))];
-                const uniqueStackValues = [...new Set(data.map(item => item[stackLabel]))];
+                const uniqueStackValues = [...new Set(data.map(item[stackLabel]))];
 
                 const traces = uniqueStackValues.map(stackValue => {
                     const filteredData = data.filter(item => item[stackLabel] === stackValue);
@@ -199,9 +201,31 @@
                 Plotly.newPlot(plotContainer, traces, layout);
             }
 
+            function createClusteredBarChart(data, xAxisLabel, yAxisLabels, title) {
+                const x = data.map(item => item['customerID']);
+                const traces = yAxisLabels.map(label => {
+                    return {
+                        x: x,
+                        y: data.map(item => item[label]),
+                        name: label,
+                        type: 'bar'
+                    };
+                });
+
+                const layout = {
+                    title: title,
+                    xaxis: {title: 'Customer ID'},
+                    yaxis: {title: 'Value'},
+                    barmode: 'group',
+                    showlegend: true
+                };
+
+                Plotly.newPlot(plotContainer, traces, layout);
+            }
+
             function createStoreCategoryFilters(data) {
                 const uniqueStoreIDs = [...new Set(data.map(item => item['storeID']))];
-                const uniqueCategories = [...new Set(data.map(item => item['Category']))];
+                const uniqueCategories = [...new Set(data.map(item['Category']))];
 
                 const storeDropdown = document.createElement('select');
                 storeDropdown.id = 'store-filter';
@@ -286,7 +310,7 @@
 </head>
 <body>
 <div class="container">
-    <h1>Sales Dashboard</h1>
+    <h1>Sales Insights Dashboard</h1>
     <div id="filter-container"></div>
     <select id="api-dropdown">
         <option value="sales_by_day_of_week">Sales by Day of Week</option>
@@ -297,7 +321,11 @@
         <option value="store_performance_comparison">Store Performance Comparison</option>
         <option value="inventory_turnover_rate">Inventory Turnover Rate</option>
     </select>
-    <div class="spinner"><div></div><div></div><div></div></div>
+    <div class="spinner">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
     <div id="plot-container"></div>
 </div>
 </body>

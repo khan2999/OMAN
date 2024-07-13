@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from collections import defaultdict
 from decimal import Decimal
 from math import radians, cos, sin, asin, sqrt
 
@@ -125,6 +126,10 @@ queries = {
 
 }
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 
 @app.route('/drilldown', methods=['GET'])
 def drilldown_data():
@@ -208,18 +213,29 @@ def drilldown_data():
                 """
             params = (region,)
         else:
+            logging.debug("Invalid drill-down parameters")
             return jsonify({"error": "Invalid drill-down parameters"}), 400
+
+        # Log the query and params
+        logging.debug("Executing query: %s with params: %s", query, params)
 
         # Execute query and fetch results
         data = execute_query(query, params)
 
+        # Log the raw data
+        logging.debug("Raw data fetched: %s", data)
+
         # Convert decimals to floats
         formatted_data = decimal_to_float(data)
+
+        # Log the formatted data
+        logging.debug("Formatted data: %s", formatted_data)
 
         # Return results in JSON format
         return jsonify(formatted_data)
 
     except Exception as e:
+        logging.error("Error in drilldown_data: %s", e)
         return jsonify({"error": str(e)}), 500
 
 
@@ -489,8 +505,12 @@ def product_size_sales():
 
 def calculate_distance(lat1, lon1, lat2, lon2):
     """
-    Calculate the great circle distance between two points
-    on the earth (specified in decimal degrees) using the Haversine formula.
+    Calculate the Haversine distance between two geographical points.
+    Args:
+        lat1, lon1: Latitude and Longitude of the first point.
+        lat2, lon2: Latitude and Longitude of the second point.
+    Returns:
+        Distance between the two points in kilometers.
     """
     lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
     dlon = lon2 - lon1
@@ -509,12 +529,12 @@ def distance_analysis():
         cursor.execute('''
             SELECT 
                 o.customerID, 
-                SUM(o.total) as total_sales,
-                COUNT(o.orderID) as order_frequency,
-                ANY_VALUE(s.latitude) as store_lat,  
-                ANY_VALUE(s.longitude) as store_lon,
-                ANY_VALUE(c.latitude) as customer_lat, 
-                ANY_VALUE(c.longitude) as customer_lon
+                SUM(o.total) AS total_sales,
+                COUNT(o.orderID) AS order_frequency,
+                ANY_VALUE(s.latitude) AS store_lat,  
+                ANY_VALUE(s.longitude) AS store_lon,
+                ANY_VALUE(c.latitude) AS customer_lat, 
+                ANY_VALUE(c.longitude) AS customer_lon
             FROM Orders o
             JOIN Stores s ON o.storeID = s.storeID
             JOIN Customers c ON o.customerID = c.customerID
@@ -530,27 +550,28 @@ def distance_analysis():
                 'total_sales': row['total_sales']
             })
 
-        # More distance bins for finer granularity
+        # Define bins for distance ranges
         distance_bins = [i for i in range(0, 55, 5)]
-        binned_data = {}
+        binned_data = defaultdict(lambda: {'order_frequency': [], 'total_sales': []})
+
+        # Bin the data based on distance ranges
         for d in data:
             for i in range(len(distance_bins) - 1):
                 if distance_bins[i] <= d['distance'] < distance_bins[i + 1]:
                     bin_key = f"{distance_bins[i]}-{distance_bins[i + 1]}"
-                    if bin_key not in binned_data:
-                        binned_data[bin_key] = {'order_frequency': [], 'total_sales': []}
                     binned_data[bin_key]['order_frequency'].append(d['order_frequency'])
                     binned_data[bin_key]['total_sales'].append(d['total_sales'])
                     break
 
+        # Calculate mean and standard deviation for each bin
         aggregate_data = []
         for bin_key, bin_data in binned_data.items():
             order_frequency_mean = sum(bin_data['order_frequency']) / len(bin_data['order_frequency'])
-            order_frequency_std = (sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(
-                bin_data['order_frequency'])) ** 0.5
+            order_frequency_std = sqrt(sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(
+                bin_data['order_frequency']))
             total_sales_mean = sum(bin_data['total_sales']) / len(bin_data['total_sales'])
-            total_sales_std = (sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(
-                bin_data['total_sales'])) ** 0.5
+            total_sales_std = sqrt(
+                sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(bin_data['total_sales']))
             aggregate_data.append({
                 'distance_bin': bin_key,
                 'order_frequency_mean': order_frequency_mean,
@@ -559,8 +580,8 @@ def distance_analysis():
                 'total_sales_std': total_sales_std
             })
 
-        conn.close()
         cursor.close()
+        conn.close()
         return jsonify(aggregate_data)
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching distance analysis data: {error}")
@@ -643,11 +664,13 @@ def customer_segmentation():
         for entry in data:
             entry['spend_per_order'] = entry['total_spend'] / entry['num_orders'] if entry['num_orders'] else 0
 
+        # Log the data for debugging
+        app.logger.info(f"Customer Segmentation Data: {data}")
+
         return jsonify(data)
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching customer segmentation data: {error}")
         return jsonify({"error": "Database error"}), 500
-
 
 
 @app.route('/api/inventory_turnover_rate')
@@ -884,7 +907,6 @@ def filter_inventory_turnover_rate():
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching filtered inventory turnover rate data: {error}")
         return jsonify({"error": "Database error"}), 500
-
 
 
 if __name__ == '__main__':
