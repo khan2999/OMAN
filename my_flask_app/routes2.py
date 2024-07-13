@@ -312,6 +312,67 @@ def delivery_optimization():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/pizza_types')
+def pizza_types():
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT DISTINCT Name FROM products")
+        result = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return jsonify([row[0] for row in result])
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route('/sales_per_cost')
+def sales_per_cost():
+    pizza_type = request.args.get('pizza_type')
+    try:
+        connection = get_db_connection()
+        cursor = connection.cursor(dictionary=True)
+        query = """SELECT p.size AS size, COUNT(oi.SKU) AS total_quantity
+        FROM orderitems oi
+        JOIN products p ON oi.SKU = p.SKU
+        WHERE p.Name = %s
+        GROUP BY p.size
+        ORDER BY FIELD(p.size, 'Small', 'Medium', 'Large', 'Extra Large')
+        """
+        cursor.execute(query, (pizza_type,))
+        result = cursor.fetchall()
+        cursor.close()
+        connection.close()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route('/product_popularity')
+def product_popularity():
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    query = """
+    SELECT p.Name AS product_name, COUNT(oi.SKU) AS total_quantity
+    FROM orderitems oi
+    JOIN products p ON oi.SKU = p.SKU
+    GROUP BY p.Name
+    ORDER BY total_quantity DESC
+    """
+    cursor.execute(query)
+    result = cursor.fetchall()
+
+    # Assign star ratings based on rank and
+    max_rank = len(result)
+    for i, row in enumerate(result):
+        if max_rank > 1:
+            row['popularity'] = round(1 + 4 * (max_rank - i - 1) / (max_rank - 1))
+        else:
+            row['popularity'] = 5
+
+    cursor.close()
+    connection.close()
+    return jsonify(result)
+
+
 if __name__ == '__main__':
     logging.debug("Starting Flask app")
     app.run(debug=True)
