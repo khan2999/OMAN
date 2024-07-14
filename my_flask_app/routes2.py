@@ -2,7 +2,7 @@ import json
 import logging
 import time
 import mysql.connector
-import pandas as pd
+import plotly as pd
 from flask import render_template, jsonify, request
 
 from my_flask_app import app
@@ -13,10 +13,10 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Database connection
 mydb = mysql.connector.connect(
-    host="localhost",
+    host="127.0.0.1",
     user="root",
-    passwd="password",
-    database="Pizza"
+    passwd="DBml##%%98",
+    database="omanpl"
 )
 
 

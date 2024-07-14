@@ -5,10 +5,10 @@ from flask import current_app
 def get_db_connection():
     # Fügen Sie Ihre Datenbankverbindungsdetails hinzu
     connection = mysql.connector.connect(
-        host="localhost",
+        host="127.0.0.1",
         user="root",
-        passwd="Password00123",
-        database="test"
+        passwd="DBml##%%98",
+        database="omanpl"
     )
     return connection
 
