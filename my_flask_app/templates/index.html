@@ -24,10 +24,10 @@
             color: #fff;
         }
         #header h1 {
-         font-size: 300%;
-}
-
+            font-size: 300%;
+        }
         #content {
+            position: relative;
             display: flex;
             justify-content: space-around;
             align-items: flex-start;
@@ -40,6 +40,34 @@
             width: 50%;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        .legend {
+            position: absolute;
+            bottom: 40px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .legend .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border-radius: 50%;
+        }
+        .legend .legend-color.green {
+            background: green;
+        }
+        .legend .legend-color.red {
+            background: red;
         }
         .chart-container {
             width: 45%;
@@ -52,6 +80,7 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
             background-color: rgba(255, 255, 255, 0.9);
             overflow-y: auto;
+            position: relative;
         }
         .chart {
             width: 100%;
@@ -88,32 +117,6 @@
         #data-table th {
             background-color: #f2f2f2;
         }
-        .legend {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: rgba(255, 255, 255, 0.8);
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-        }
-        .legend-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .legend .legend-color {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            border-radius: 50%;
-        }
-        .legend .legend-color.green {
-            background: green;
-        }
-        .legend .legend-color.red {
-            background: red;
-        }
         @media (max-width: 768px) {
             #content {
                 flex-direction: column;
@@ -121,6 +124,14 @@
             }
             #map, .chart-container {
                 width: 100%;
+            }
+            .legend {
+                position: absolute;
+                bottom: 20px;
+                left: 20px;
+                right: 20px;
+                transform: none;
+                z-index: 1000;
             }
         }
     </style>
@@ -149,7 +160,6 @@
                 <button id="show-customers">Show Customers</button>
                 <label for="year-select">Select Year:</label>
                 <select id="year-select">
-                    <!-- Options will be populated dynamically -->
                 </select>
             </div>
             <canvas id="chart" class="chart"></canvas>
@@ -166,16 +176,16 @@
                         <th>Umsatz</th>
                         <th>Delta zum Vorjahr (%)</th>
                         <th>Kunden</th>
-                        <th>Welta zum Vorjahr</th>
+                        <th>Delta zum Vorjahr</th>
                         <th>Bestellungen-Jahr</th>
                     </tr>
                 </thead>
                 <tbody id="table-body">
-                    <!-- Data will be populated dynamically -->
                 </tbody>
             </table>
         </div>
     </div>
+
     <div class="legend">
         <div class="legend-item">
             <div class="legend-color green"></div>
