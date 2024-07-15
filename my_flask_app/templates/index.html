@@ -4,90 +4,76 @@
     <meta charset="UTF-8">
     <title>Store Locations and Data Selection</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     <style>
         body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
+            background-size: cover;
+            background-position: center;
         }
         #header {
             width: 100%;
             text-align: center;
-            margin-top: 10px;
+            margin-top: 20px;
+            color: #fff;
         }
+        #header h1 {
+         font-size: 300%;
+}
+
         #content {
             display: flex;
-            flex-direction: row;
-            justify-content: space-between;
+            justify-content: space-around;
             align-items: flex-start;
             width: 100%;
-            height: 90%;
-        }
-        #map {
-            height: 90%;
-            width: 50%;
+            height: 80vh;
             margin-top: 20px;
         }
-        .chart-container {
+        #map {
+            height: 100%;
             width: 50%;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .chart-container {
+            width: 45%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 10px;
-            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            background-color: rgba(255, 255, 255, 0.9);
+            overflow-y: auto;
         }
         .chart {
             width: 100%;
             height: 45%;
+            margin-top: 20px;
         }
         #controls {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-        #controls {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 10px;
-}
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        #controls > * {
+            margin: 10px;
+        }
         #chart-options {
             display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 10px;
-            width: 100%;
+            flex-direction: column;
+            margin-right: 10px;
         }
-        #chart-options label {
-            width: 45%;
-            margin: 5px;
-            display: flex;
-            align-items: center;
-        }
-        .buttons-container {
-            display: flex;
-            flex-direction: row;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-            margin-top: 10px;
-        }
-        .buttons-container button {
-            margin: 5px;
-        }
-        #year-select-container {
-            margin-top: 10px;
-            text-align: center;
-        }
-
         #data-table {
             width: 100%;
             border-collapse: collapse;
@@ -102,22 +88,16 @@
         #data-table th {
             background-color: #f2f2f2;
         }
-        highlight {
-            fill: yellow !important;
-            stroke: orange !important;
-            stroke-width: 2 !important;
-        }
         .legend {
-            background: white;
-            padding: 10px;
-            margin-top: 10px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            border-radius: 5px;
             position: absolute;
-            top: 760px; /* Adjust as needed */
-            left: 1px; /* Adjust as needed */
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
         }
-        .legend .legend-item {
+        .legend-item {
             display: flex;
             align-items: center;
             margin-bottom: 5px;
@@ -134,11 +114,20 @@
         .legend .legend-color.red {
             background: red;
         }
+        @media (max-width: 768px) {
+            #content {
+                flex-direction: column;
+                height: auto;
+            }
+            #map, .chart-container {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
     <div id="header">
-        <h1>Location Based Analysis</h1>
+        <h1>Store Locations and Data Selection</h1>
     </div>
     <div id="content">
         <div id="map"></div>
@@ -154,29 +143,23 @@
                     <label><input type="checkbox" value="cross-sell-chart"> Cross-Sell Chart</label>
                     <label><input type="checkbox" value="data-table"> Table</label>
                 </div>
-                <div class="buttons-container">
-                    <button id="show-all">Show All</button>
-                    <button id="update-chart">Update Data</button>
-                    <button id="toggle-view">Show Selected Stores</button>
-                    <button id="show-customers">Show Customers</button>
-                </div>
-                <div id="year-select-container">
-                    <label for="year-select">Select Year:</label>
-                    <select id="year-select">
-                        <!-- Options will be populated dynamically -->
-                    </select>
-                </div>
+                <button id="show-all">Show All</button>
+                <button id="update-chart">Update Data</button>
+                <button id="toggle-view">Show Selected Stores</button>
+                <button id="show-customers">Show Customers</button>
+                <label for="year-select">Select Year:</label>
+                <select id="year-select">
+                    <!-- Options will be populated dynamically -->
+                </select>
             </div>
-                <canvas id="chart" class="chart"></canvas>
-                <canvas id="customer-chart" class="chart"></canvas>
-                <canvas id="order-chart" class="chart"></canvas>
-                <canvas id="avg-spending-chart" class="chart"></canvas>
-                <canvas id="distance-chart" class="chart"></canvas>
-                <canvas id="cross-sell-chart" class="chart"></canvas>
-                <table id="data-table">
-                    <thead>
-
-
+            <canvas id="chart" class="chart"></canvas>
+            <canvas id="customer-chart" class="chart"></canvas>
+            <canvas id="order-chart" class="chart"></canvas>
+            <canvas id="avg-spending-chart" class="chart"></canvas>
+            <canvas id="distance-chart" class="chart"></canvas>
+            <canvas id="cross-sell-chart" class="chart"></canvas>
+            <table id="data-table">
+                <thead>
                     <tr>
                         <th>Store</th>
                         <th>Delta zum Vorjahr</th>
@@ -208,6 +191,8 @@
     </div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
     <script>
         var map = L.map('map').setView([37.7749, -122.4194], 5);
 
