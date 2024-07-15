@@ -1,25 +1,39 @@
 <!DOCTYPE html>
-<html>
+<html lang="">
 <head>
     <title>Pizza Menu</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            background-position: center center;
+            height: 100vh;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .data {
             width: 45%;
             border-collapse: collapse;
             margin-top: 20px;
-            float: left;
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         .data th, .data td {
-            border: 1px solid black;
+            border: 1px solid white;
             padding: 8px;
             text-align: left;
         }
         .data th {
-            background-color: #f2f2f2;
+            background-color: black;
         }
         .hidden {
             display: none;
@@ -28,6 +42,7 @@
             display: none;
             text-align: center;
             padding: 20px;
+            color: white;
         }
         #error-message {
             display: none;
@@ -35,55 +50,63 @@
             text-align: center;
             padding: 20px;
         }
-        #portfolio, #revenue-data, #sales-distribution, #sales-trend, #sales-per-cost, #product-popularity {
-            margin-top: 20px;
-            float: left;
-            width: 45%;
-        }
-        .button-container {
-            margin-top: 20px;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 10px 20px;
-            margin: 5px;
-            cursor: pointer;
-        }
         #revenue-chart-container, #portfolio-chart-container, #sales-distribution-chart-container, #sales-trend-chart-container, #sales-per-cost-chart-container, #product-popularity-chart-container {
             width: 45%;
             max-width: 800px;
             margin-top: 20px;
-            float: left;
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background-color: black;
+            color: white;
+            border: 1px solid white;
         }
-        #sales-trend-chart-container {
-            width: 1500px; /* Adjust width to 1500px */
-        }
-         #sales-per-cost-chart-container {
-            width: 1501px;
-        }
-        .clearfix::after {
-            content: "";
-            clear: both;
-            display: table;
+        .clearfix {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            width: 100%;
         }
         .chart-select {
             margin-top: 20px;
-            float: left;
             width: 45%;
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .button-container {
+            margin: 20px 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .menu-button {
+            font-size: 1.5em;
+            padding: 15px 30px;
+            margin: 5px 10px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            text-align: center;
+        }
+        .menu-button:hover {
+            background-color: blue;
         }
     </style>
 </head>
 <body>
-    <h1>Pizza Data Analysis</h1>
+    <h1 class="centered">Pizza Data Analysis</h1>
     <div class="button-container">
-        <button onclick="showRevenueOptions()">Show Revenue</button>
-        <button onclick="showProductPortfolio()">Show Product Portfolio</button>
-        <button onclick="showSalesTrend()">Show Sales Trend</button>
-        <button onclick="showSalesPerCost()">Show Sales per Cost</button>
-        <button onclick="showProductPopularity()">Show Product Popularity</button>
-        <button onclick="window.location.href='http://127.0.0.1:5000/'">Show other Analysis</button>
+        <button class="menu-button" onclick="showRevenueOptions()">Show Revenue</button>
+        <button class="menu-button" onclick="showProductPortfolio()">Show Product Portfolio</button>
+        <button class="menu-button" onclick="showSalesTrend()">Show Sales Trend</button>
+        <button class="menu-button" onclick="showSalesPerCost()">Show Sales per Cost</button>
+        <button class="menu-button" onclick="showProductPopularity()">Show Product Popularity</button>
+        <button class="menu-button" onclick="window.location.href='http://127.0.0.1:5000/'">Show other Analysis</button>
     </div>
 
     <div id="revenue-form-container" class="hidden">
@@ -115,7 +138,6 @@
     <div id="pizza-select-container" class="hidden">
         <label for="pizza-type">Select Pizza Type:</label>
         <select id="pizza-type" onchange="fetchSalesPerCost()">
-            <!-- Options will be populated dynamically -->
         </select>
     </div>
 
@@ -132,84 +154,83 @@
     <div id="error-message"></div>
 
     <div class="clearfix">
-        <div id="revenue-data" class="hidden"></div>
+        <div id="revenue-data" class="data hidden"></div>
         <div id="revenue-chart-container" class="hidden">
             <canvas id="revenue-chart" width="800" height="400"></canvas>
         </div>
     </div>
 
     <div class="clearfix">
-        <div id="portfolio" class="hidden"></div> <!-- Ensure this element exists -->
+        <div id="portfolio" class="data hidden"></div>
         <div id="portfolio-chart-container" class="hidden">
             <canvas id="portfolio-chart" width="800" height="400"></canvas>
         </div>
     </div>
 
     <div class="clearfix">
-        <div id="sales-distribution" class="hidden"></div>
+        <div id="sales-distribution" class="data hidden"></div>
         <div id="sales-distribution-chart-container" class="hidden">
             <canvas id="sales-distribution-chart" width="800" height="400"></canvas>
         </div>
     </div>
 
     <div class="clearfix">
-        <div id="sales-trend" class="hidden"></div>
+        <div id="sales-trend" class="data hidden"></div>
         <div id="sales-trend-chart-container" class="hidden">
-            <canvas id="sales-trend-chart" width="1500" height="800"></canvas> <!-- Adjust canvas width to 1500px and height to 800px -->
+            <canvas id="sales-trend-chart" width="1500" height="800"></canvas>
         </div>
     </div>
 
     <div class="clearfix">
-        <div id="sales-per-cost" class="hidden"></div>
+        <div id="sales-per-cost" class="data hidden"></div>
         <div id="sales-per-cost-chart-container" class="hidden">
             <canvas id="sales-per-cost-chart" width="800" height="400"></canvas>
         </div>
     </div>
 
     <div class="clearfix">
-        <div id="product-popularity" class="hidden"></div>
+        <div id="product-popularity" class="data hidden"></div>
         <div id="product-popularity-chart-container" class="hidden">
             <canvas id="product-popularity-chart" width="800" height="400"></canvas>
         </div>
     </div>
 
-    <div id="product-popularity-container" class="hidden"></div> <!-- Add this line -->
+    <div id="product-popularity-container" class="hidden"></div>
 
     <script>
         let portfolioChart, salesDistributionChart, salesTrendChart, salesPerCostChart, productPopularityChart;
 
         function showRevenueOptions() {
-            document.getElementById('revenue-form-container').classList.remove('hidden');
-            document.querySelector('.chart-select').classList.add('hidden');
             hideAllSections();
+            document.getElementById('revenue-form-container').classList.remove('hidden');
         }
 
         function showProductPortfolio() {
-            document.getElementById('revenue-form-container').classList.add('hidden');
-            document.querySelector('.chart-select').classList.remove('hidden');
             hideAllSections();
+            document.getElementById('portfolio').classList.remove('hidden');
+            document.getElementById('portfolio-chart-container').classList.remove('hidden');
             fetchProductPortfolio();
         }
 
         function showSalesTrend() {
-            document.getElementById('revenue-form-container').classList.add('hidden');
-            document.querySelector('.chart-select').classList.add('hidden');
             hideAllSections();
+            document.getElementById('sales-trend').classList.remove('hidden');
+            document.getElementById('sales-trend-chart-container').classList.remove('hidden');
             fetchSalesTrends();
         }
 
         function showSalesPerCost() {
-            document.getElementById('revenue-form-container').classList.add('hidden');
-            document.querySelector('.chart-select').classList.add('hidden');
             hideAllSections();
-            fetchPizzaTypes();  // Fetch pizza types for the dropdown menu
+            document.getElementById('sales-per-cost').classList.remove('hidden');
+            document.getElementById('sales-per-cost-chart-container').classList.remove('hidden');
+            fetchPizzaTypes();
             document.getElementById('pizza-select-container').classList.remove('hidden');
         }
 
         function showProductPopularity() {
-            document.getElementById('revenue-form-container').classList.add('hidden');
-            document.querySelector('.chart-select').classList.add('hidden');
             hideAllSections();
+            document.getElementById('product-popularity').classList.remove('hidden');
+            document.getElementById('product-popularity-chart-container').classList.remove('hidden');
             fetchProductPopularity();
         }
 
@@ -227,11 +248,10 @@
             document.getElementById('product-popularity').classList.add('hidden');
             document.getElementById('product-popularity-chart-container').classList.add('hidden');
             document.getElementById('pizza-select-container').classList.add('hidden');
-            document.getElementById('product-popularity-container').classList.add('hidden'); // Add this line
+            document.getElementById('product-popularity-container').classList.add('hidden');
+            document.querySelector('.chart-select').classList.add('hidden');
         }
-
         function fetchPizzaTypes() {
-            // This function fetches the pizza types and populates the dropdown menu
             fetch('/pizza_types')
                 .then(response => response.json())
                 .then(data => {
@@ -277,7 +297,6 @@
                                 html += '</tbody></table>';
                                 portfolioElement.innerHTML = html;
 
-                                // Show portfolio data and chart
                                 portfolioElement.classList.remove('hidden');
                                 createPortfolioChart(data.labels, data.data);
                             } else {
@@ -299,7 +318,6 @@
         function createPortfolioChart(labels, data) {
             const chartType = document.getElementById('chart-type').value;
 
-            // Generate unique colors for each product
             const colors = [
                 '#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236',
                 '#166a8f', '#00a950', '#58595b', '#8549ba', '#ff9f40',
@@ -322,43 +340,52 @@
                 portfolioChart.destroy();
             }
             portfolioChart = new Chart(ctx, {
-                type: chartType,
-                data: chartData,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        title: {
-                            display: true,
-                            text: 'Product Portfolio Chart'
-                        }
-                    },
-                    scales: chartType === 'pie' ? {} : {
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: true
-                            },
-                            beginAtZero: true
-                        }
-                    },
-                    onClick: (e, elements) => {
-                        if (elements.length > 0) {
-                            const index = elements[0].index;
-                            const productName = chartData.labels[index];
-                            fetchProductSalesDistribution(productName);
-                        }
+        type: chartType,
+        data: chartData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'white'
                     }
+                },
+                title: {
+                    display: true,
+                    text: 'Product Portfolio Chart',
+                    color: 'white'
                 }
-            });
+            },
+            scales: chartType === 'pie' ? {} : {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: 'white'
+                    }
+                },
+                y: {
+                    grid: {
+                        display: true
+                    },
+                    ticks: {
+                        color: 'white'
+                    },
+                    beginAtZero: true
+                }
+            },
+            onClick: (e, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    const productName = chartData.labels[index];
+                    fetchProductSalesDistribution(productName);
+                }
+            }
+        }
+    });
 
-            // Show chart container
             document.getElementById('portfolio-chart-container').classList.remove('hidden');
         }
 
@@ -389,7 +416,6 @@
                                 html += '</tbody></table>';
                                 salesDistributionElement.innerHTML = html;
 
-                                // Show sales distribution data
                                 salesDistributionElement.classList.remove('hidden');
                                 createSalesDistributionChart(productName, data);
                             } else {
@@ -412,7 +438,6 @@
             const labels = data.map(row => `${row.city}, ${row.state}`);
             const salesData = data.map(row => row.total_sales);
 
-            // Generate unique colors for each state
             const colors = data.map((_, index) => `hsl(${index * 30}, 70%, 50%)`);
 
             const chartData = {
@@ -430,37 +455,46 @@
             if (salesDistributionChart) {
                 salesDistributionChart.destroy();
             }
-            salesDistributionChart = new Chart(ctx, {
-                type: 'bar',
-                data: chartData,
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        title: {
-                            display: true,
-                            text: `Sales Distribution for ${productName}`
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            grid: {
-                                display: true
-                            },
-                            beginAtZero: true
-                        }
+           salesDistributionChart = new Chart(ctx, {
+        type: 'bar',
+        data: chartData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: 'white'
                     }
+                },
+                title: {
+                    display: true,
+                    text: `Sales Distribution for ${productName}`,
+                    color: 'white'
                 }
-            });
+            },
+            scales: {
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: 'white'
+                    }
+                },
+                y: {
+                    grid: {
+                        display: true
+                    },
+                    ticks: {
+                        color: 'white'
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
 
-            // Show chart container
             document.getElementById('sales-distribution-chart-container').classList.remove('hidden');
         }
 
@@ -510,7 +544,6 @@
                             }
                         });
 
-                        // Show sales trend chart
                         document.getElementById('sales-trend-chart-container').classList.remove('hidden');
                     }
                 })
@@ -638,7 +671,6 @@
             event.preventDefault();
             document.getElementById('loading').style.display = 'block';
             document.getElementById('error-message').style.display = 'none';
-            // Hide portfolio data and chart
             hideAllSections();
             const startYear = document.getElementById('start-year').value;
             const endYear = document.getElementById('end-year').value;
@@ -659,7 +691,6 @@
                         html += '</tbody></table>';
                         document.getElementById('revenue-data').innerHTML = html;
 
-                        // Generate unique colors for each year and quarter
                         const colors = ['#4dc9f6', '#f67019', '#f53794', '#537bc4', '#acc236', '#166a8f', '#00a950', '#58595b', '#8549ba'];
                         const chartData = {
                             labels: data.map(entry => `${entry.year} Q${entry.quarter}`),
@@ -669,12 +700,11 @@
                                 backgroundColor: data.map((entry, index) => colors[index % colors.length]),
                                 borderColor: data.map((entry, index) => colors[index % colors.length]),
                                 borderWidth: 1,
-                                barPercentage: 0.5,  // Adjust bar width
-                                categoryPercentage: 1.0 // Adjust bar gap
+                                barPercentage: 0.5,
+                                categoryPercentage: 1.0
                             }]
                         };
 
-                        // Render chart
                         const ctx = document.getElementById('revenue-chart').getContext('2d');
                         if (window.revenueChart) {
                             window.revenueChart.destroy();
@@ -709,7 +739,6 @@
                             }
                         });
 
-                        // Show revenue data and chart
                         document.getElementById('revenue-data').classList.remove('hidden');
                         document.getElementById('revenue-chart-container').classList.remove('hidden');
                     }
@@ -721,7 +750,6 @@
                 });
         });
 
-        // Listen for changes in the chart type select element
         document.getElementById('chart-type').addEventListener('change', function() {
             const labels = portfolioChart.data.labels;
             const data = portfolioChart.data.datasets[0].data;

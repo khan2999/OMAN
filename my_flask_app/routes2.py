@@ -1,10 +1,7 @@
-import json
 import logging
-import time
+import pandas as pd  # Korrigierter Import für pandas
 import mysql.connector
-import plotly as pd
 from flask import render_template, jsonify, request
-
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
 
@@ -15,8 +12,8 @@ logging.basicConfig(level=logging.DEBUG)
 mydb = mysql.connector.connect(
     host="127.0.0.1",
     user="root",
-    passwd="DBml##%%98",
-    database="omanpl"
+    passwd="password",
+    database="pizza"
 )
 
 
@@ -92,27 +89,29 @@ def product_portfolio():
 
         if year:
             if quarter:
-                sql = f"""
+                sql = """
                 SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
                 FROM orderitems oi
                 JOIN products p ON oi.SKU = p.SKU
                 JOIN orders o ON oi.orderID = o.orderID
-                WHERE YEAR(o.orderDate) = {year} AND QUARTER(o.orderDate) = {quarter}
+                WHERE YEAR(o.orderDate) = %s AND QUARTER(o.orderDate) = %s
                 GROUP BY oi.SKU, p.Name
                 ORDER BY total_quantity_sold DESC
                 LIMIT 10;
                 """
+                params = (year, quarter)
             else:
-                sql = f"""
+                sql = """
                 SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
                 FROM orderitems oi
                 JOIN products p ON oi.SKU = p.SKU
                 JOIN orders o ON oi.orderID = o.orderID
-                WHERE YEAR(o.orderDate) = {year}
+                WHERE YEAR(o.orderDate) = %s
                 GROUP BY oi.SKU, p.Name
                 ORDER BY total_quantity_sold DESC
                 LIMIT 10;
                 """
+                params = (year,)
         else:
             sql = """
             SELECT oi.SKU, p.Name AS product_name, COUNT(*) AS total_quantity_sold
@@ -124,8 +123,9 @@ def product_portfolio():
             ORDER BY total_quantity_sold DESC
             LIMIT 10;
             """
+            params = None
 
-        df = get_data_from_db(sql)
+        df = get_data_from_db(sql, params)
 
         if df.empty:
             return jsonify({'error': 'No data found.'}), 404
@@ -141,7 +141,6 @@ def product_portfolio():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 
 @app.route('/product_sales_distribution', methods=['GET'])
@@ -174,15 +173,10 @@ def product_sales_distribution():
         return jsonify({'error': str(e)}), 500
 
 
-
-#show data after launch time
-
-from datetime import datetime
-from collections import defaultdict
+# Show data after launch time
 @app.route('/sales_trends', methods=['GET'])
 def sales_trends():
     try:
-        cursor = mydb.cursor(dictionary=True)
         query = """
         SELECT
             p.Name AS product_name,
@@ -205,8 +199,7 @@ def sales_trends():
             MONTH(o.orderDate);
         """
 
-        cursor.execute(query)
-        data = cursor.fetchall()
+        df = get_data_from_db(query)
 
         # Prepare data for Chart.js
         labels = []
@@ -221,23 +214,23 @@ def sales_trends():
 
         # Structure data for Chart.js datasets
         color_index = 0
-        for product in data:
-            label = f"{product['year']}-{product['month']:02}"
+        for _, row in df.iterrows():
+            label = f"{row['year']}-{row['month']:02}"
             if label not in labels:
                 labels.append(label)
 
             # Find existing dataset or create a new one
             found = False
             for dataset in datasets:
-                if dataset['label'] == product['product_name']:
-                    dataset['data'].append(product['total_sales'])
+                if dataset['label'] == row['product_name']:
+                    dataset['data'].append(row['total_sales'])
                     found = True
                     break
 
             if not found:
                 datasets.append({
-                    'label': product['product_name'],
-                    'data': [product['total_sales']],
+                    'label': row['product_name'],
+                    'data': [row['total_sales']],
                     'borderColor': colors[color_index % len(colors)],  # Assign color based on index
                     'backgroundColor': colors[color_index % len(colors)],
                     'borderWidth': 1,
@@ -264,11 +257,9 @@ def sales_trends():
         return jsonify({"error": str(e)}), 500
 
 
-
 @app.route('/order_fulfillment', methods=['GET'])
 def order_fulfillment():
     try:
-        cursor = mydb.cursor(dictionary=True)
         query = """
         SELECT
             o.orderID,
@@ -281,9 +272,8 @@ def order_fulfillment():
             orders o
             JOIN stores s ON o.storeID = s.storeID;
         """
-        cursor.execute(query)
-        data = cursor.fetchall()
-        return jsonify(data)
+        df = get_data_from_db(query)
+        return jsonify(df.to_dict(orient='records'))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -291,7 +281,6 @@ def order_fulfillment():
 @app.route('/delivery_optimization', methods=['GET'])
 def delivery_optimization():
     try:
-        cursor = mydb.cursor(dictionary=True)
         query = """
         SELECT
             o.orderID,
@@ -305,9 +294,8 @@ def delivery_optimization():
             JOIN customers c ON o.customerID = c.customerID
             JOIN stores s ON o.storeID = s.storeID;
         """
-        cursor.execute(query)
-        data = cursor.fetchall()
-        return jsonify(data)
+        df = get_data_from_db(query)
+        return jsonify(df.to_dict(orient='records'))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -324,6 +312,7 @@ def pizza_types():
         return jsonify([row[0] for row in result])
     except Exception as e:
         return jsonify({"error": str(e)})
+
 
 @app.route('/sales_per_cost')
 def sales_per_cost():
@@ -346,6 +335,7 @@ def sales_per_cost():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+
 @app.route('/product_popularity')
 def product_popularity():
     connection = get_db_connection()
@@ -360,7 +350,7 @@ def product_popularity():
     cursor.execute(query)
     result = cursor.fetchall()
 
-    # Assign star ratings based on rank and
+    # Assign star ratings based on rank
     max_rank = len(result)
     for i, row in enumerate(result):
         if max_rank > 1:
