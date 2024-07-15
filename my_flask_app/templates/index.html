@@ -44,20 +44,50 @@
             height: 45%;
         }
         #controls {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        #controls button {
-            margin: 5px;
-        }
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+        #controls {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 10px;
+}
         #chart-options {
             display: flex;
-            flex-direction: column;
-            margin-right: 10px;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 10px;
+            width: 100%;
         }
+        #chart-options label {
+            width: 45%;
+            margin: 5px;
+            display: flex;
+            align-items: center;
+        }
+        .buttons-container {
+            display: flex;
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .buttons-container button {
+            margin: 5px;
+        }
+        #year-select-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+
         #data-table {
             width: 100%;
             border-collapse: collapse;
@@ -72,7 +102,7 @@
         #data-table th {
             background-color: #f2f2f2;
         }
-        .highlight {
+        highlight {
             fill: yellow !important;
             stroke: orange !important;
             stroke-width: 2 !important;
@@ -108,7 +138,7 @@
 </head>
 <body>
     <div id="header">
-        <h1>Store Locations and Data Selection</h1>
+        <h1>Location Based Analysis</h1>
     </div>
     <div id="content">
         <div id="map"></div>
@@ -124,23 +154,29 @@
                     <label><input type="checkbox" value="cross-sell-chart"> Cross-Sell Chart</label>
                     <label><input type="checkbox" value="data-table"> Table</label>
                 </div>
-                <button id="show-all">Show All</button>
-                <button id="update-chart">Update Data</button>
-                <button id="toggle-view">Show Selected Stores</button>
-                <button id="show-customers">Show Customers</button>
-                <label for="year-select">Select Year:</label>
-                <select id="year-select">
-                    <!-- Options will be populated dynamically -->
-                </select>
+                <div class="buttons-container">
+                    <button id="show-all">Show All</button>
+                    <button id="update-chart">Update Data</button>
+                    <button id="toggle-view">Show Selected Stores</button>
+                    <button id="show-customers">Show Customers</button>
+                </div>
+                <div id="year-select-container">
+                    <label for="year-select">Select Year:</label>
+                    <select id="year-select">
+                        <!-- Options will be populated dynamically -->
+                    </select>
+                </div>
             </div>
-            <canvas id="chart" class="chart"></canvas>
-            <canvas id="customer-chart" class="chart"></canvas>
-            <canvas id="order-chart" class="chart"></canvas>
-            <canvas id="avg-spending-chart" class="chart"></canvas>
-            <canvas id="distance-chart" class="chart"></canvas>
-            <canvas id="cross-sell-chart" class="chart"></canvas>
-            <table id="data-table">
-                <thead>
+                <canvas id="chart" class="chart"></canvas>
+                <canvas id="customer-chart" class="chart"></canvas>
+                <canvas id="order-chart" class="chart"></canvas>
+                <canvas id="avg-spending-chart" class="chart"></canvas>
+                <canvas id="distance-chart" class="chart"></canvas>
+                <canvas id="cross-sell-chart" class="chart"></canvas>
+                <table id="data-table">
+                    <thead>
+
+
                     <tr>
                         <th>Store</th>
                         <th>Delta zum Vorjahr</th>
