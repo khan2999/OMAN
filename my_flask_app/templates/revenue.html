@@ -1,19 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pizza Menu</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
+            background-size: cover;
+            background-repeat: no-repeat;
+            height: 100vh;
+            margin: 0;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-top: 20px;
+            font-size: 35px;
+            color: #FFD700;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            background-color: black;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #333;
+        }
+
+        #revenue-form-container {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+
+        label, select {
+            margin: 10px;
+            color: white;
+        }
+
         .data {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px;
         }
+
         .data th, .data td {
-            border: 1px solid black;
+            border: 1px solid white;
             padding: 8px;
             text-align: left;
         }
+
         .data th {
-            background-color: #f2f2f2;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        .data td {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        #revenue-data, #portfolio {
+            width: 90%;
+            margin-top: 20px;
+        }
+
+        h2 {
+            color: #FFD700;
         }
     </style>
 </head>
@@ -81,12 +146,9 @@
             const endYear = document.getElementById('end-year').value;
             const quarter = document.getElementById('quarter').value;
 
-            console.log(`Fetching revenue data for ${startYear} to ${endYear}, quarter: ${quarter}`);
-
             fetch(`/revenue?start_year=${startYear}&end_year=${endYear}&quarter=${quarter}`)
             .then(response => response.json())
             .then(data => {
-                console.log('Received data:', data);
                 let html = '<h2>Revenue Data</h2><table class="data"><thead><tr><th>Year</th><th>Quarter</th><th>Total Revenue</th></tr></thead><tbody>';
                 data.forEach(row => {
                     html += `<tr><td>${row.year}</td><td>${row.quarter}</td><td>${row.total_revenue}</td></tr>`;
