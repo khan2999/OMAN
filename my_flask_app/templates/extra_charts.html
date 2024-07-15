@@ -18,7 +18,7 @@
 
         .container {
             flex: 1;
-            width: 80%;
+            width: 90%;
             margin: 20px auto;
             background: rgba(255, 255, 255, 0.9);
             padding: 20px;
@@ -182,7 +182,7 @@
 
             function createStackedBarChart(data, xAxisLabel, stackLabel, yAxisLabel, title) {
                 const uniqueXValues = [...new Set(data.map(item => item[xAxisLabel]))];
-                const uniqueStackValues = [...new Set(data.map(item[stackLabel]))];
+                const uniqueStackValues = [...new Set(data.map(item => item[stackLabel]))];
 
                 const traces = uniqueStackValues.map(stackValue => {
                     const filteredData = data.filter(item => item[stackLabel] === stackValue);
@@ -228,7 +228,7 @@
 
             function createStoreCategoryFilters(data) {
                 const uniqueStoreIDs = [...new Set(data.map(item => item['storeID']))];
-                const uniqueCategories = [...new Set(data.map(item['Category']))];
+                const uniqueCategories = [...new Set(data.map(item => item['Category']))];
 
                 const storeDropdown = document.createElement('select');
                 storeDropdown.id = 'store-filter';
@@ -263,32 +263,11 @@
                 createStackedBarChart(filteredData, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
             }
 
-            function createBubbleChart(data, xAxisLabel, yAxisLabel, textLabel1, textLabel2, title) {
-                const trace = {
-                    x: data.map(item => item[xAxisLabel]),
-                    y: data.map(item => item[yAxisLabel]),
-                    mode: 'markers',
-                    marker: {
-                        size: data.map(item => Math.sqrt(item[yAxisLabel]) * 5),
-                        color: data.map(item => item[xAxisLabel])
-                    },
-                    text: data.map(item => `${item[textLabel1]}, ${item[textLabel2]}`)
-                };
-
-                const layout = {
-                    title: title,
-                    xaxis: {title: xAxisLabel},
-                    yaxis: {title: yAxisLabel},
-                    showlegend: false
-                };
-
-                Plotly.newPlot(plotContainer, [trace], layout);
-            }
-
-            function createGroupedBarChart(data, xAxisLabel, yAxisLabels, title) {
+            function createClusteredBarChart(data, xAxisLabel, yAxisLabels, title) {
+                const x = data.map(item => item['customerID']);
                 const traces = yAxisLabels.map(label => {
                     return {
-                        x: data.map(item => item[xAxisLabel]),
+                        x: x,
                         y: data.map(item => item[label]),
                         name: label,
                         type: 'bar'
@@ -297,7 +276,7 @@
 
                 const layout = {
                     title: title,
-                    xaxis: {title: xAxisLabel},
+                    xaxis: {title: 'Customer ID'},
                     yaxis: {title: 'Value'},
                     barmode: 'group',
                     showlegend: true
