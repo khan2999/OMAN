@@ -340,13 +340,8 @@ def conversion_rate():
             """
         )
         value = results[0][0]  # Get the conversion rate from the results
-        fig = go.Figure(go.Indicator(
-            mode="gauge+number",
-            value=value,
-            title={'text': "Conversion Rate"},
-            gauge={'axis': {'range': [None, 100]}}
-        ))
-        return jsonify(pio.to_json(fig, pretty=True))
+        data = [{"date": "Current", "conversion_rate": value}]  # Return a single data point
+        return jsonify(data)
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching conversion rate data: {error}")
         return jsonify({"error": "Database error"}), 500
