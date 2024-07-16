@@ -100,25 +100,33 @@
                 const response = await fetch(`/api/${selectedApi}`);
                 const data = await response.json();
 
-                // Log the data for debugging
-                console.log("Fetched Data:", data);
                 spinner.style.display = 'none';
 
-                if (selectedApi === 'sales_by_day_of_week') {
-                    createBarPlot(data, 'day_of_week', 'total_sales', 'Sales by Day of Week');
-                } else if (selectedApi === 'product_size_sales') {
-                    createPieChart(data, 'Size', 'total_quantity_sold', 'Product Size Sales');
-                } else if (selectedApi === 'distance_analysis') {
-                    createScatterPlot(data, 'distance_bin', ['order_frequency_mean', 'total_sales_mean'], 'Distance Analysis');
-                } else if (selectedApi === 'store_performance_by_category') {
-                    createStackedBarChart(data, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
-                    createStoreCategoryFilters(data);
-                } else if (selectedApi === 'customer_segmentation') {
-                    createClusteredBarChart(data, 'customer_segment', ['total_spend', 'num_orders'], 'Customer Segmentation');
-                } else if (selectedApi === 'store_performance_comparison') {
-                    createGroupedBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
-                } else if (selectedApi === 'inventory_turnover_rate') {
-                    createBarPlot(data, 'SKU', 'turnover_rate', 'Inventory Turnover Rate');
+                switch (selectedApi) {
+                    case 'sales_by_day_of_week':
+                        createBarPlot(data, 'day_of_week', 'total_sales', 'Sales by Day of Week');
+                        break;
+                    case 'product_size_sales':
+                        createPieChart(data, 'Size', 'total_quantity_sold', 'Product Size Sales');
+                        break;
+                    case 'distance_analysis':
+                        renderDistanceAnalysisChart(data);
+                        break;
+                    case 'store_performance_by_category':
+                        createStackedBarChart(data, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
+                        createStoreCategoryFilters(data);
+                        break;
+                    case 'customer_segmentation':
+                        createClusteredBarChart(data, 'customerID', ['total_spend', 'num_orders'], 'Customer Segmentation');
+                        break;
+                    case 'store_performance_comparison':
+                        createClusteredBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
+                        break;
+                    case 'inventory_turnover_rate':
+                        createBarPlot(data, 'SKU', 'turnover_rate', 'Inventory Turnover Rate');
+                        break;
+                    default:
+                        console.error('Unknown API endpoint selected');
                 }
             });
 
@@ -160,24 +168,31 @@
                 Plotly.newPlot(plotContainer, [trace], layout);
             }
 
-            function createScatterPlot(data, xAxisLabel, yAxisLabels, title) {
-                const traces = yAxisLabels.map(label => {
-                    return {
-                        x: data.map(item => item[xAxisLabel]),
-                        y: data.map(item => item[label]),
-                        mode: 'markers',
-                        name: label
-                    };
-                });
+            function renderDistanceAnalysisChart(data) {
+                const trace1 = {
+                    x: data.map(d => d.distance_bin),
+                    y: data.map(d => d.order_frequency_mean),
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: 'Order Frequency Mean'
+                };
+
+                const trace2 = {
+                    x: data.map(d => d.distance_bin),
+                    y: data.map(d => d.total_sales_mean),
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: 'Total Sales Mean'
+                };
 
                 const layout = {
-                    title: title,
-                    xaxis: {title: xAxisLabel},
+                    title: 'Distance Analysis',
+                    xaxis: {title: 'Distance Bin'},
                     yaxis: {title: 'Value'},
                     showlegend: true
                 };
 
-                Plotly.newPlot('plot-container', traces, layout);
+                Plotly.newPlot(plotContainer, [trace1, trace2], layout);
             }
 
             function createStackedBarChart(data, xAxisLabel, stackLabel, yAxisLabel, title) {
@@ -205,7 +220,7 @@
             }
 
             function createClusteredBarChart(data, xAxisLabel, yAxisLabels, title) {
-                const x = data.map(item => item['customerID']);
+                const x = data.map(item => item[xAxisLabel]);
                 const traces = yAxisLabels.map(label => {
                     return {
                         x: x,
@@ -217,7 +232,7 @@
 
                 const layout = {
                     title: title,
-                    xaxis: {title: 'Customer ID'},
+                    xaxis: {title: xAxisLabel},
                     yaxis: {title: 'Value'},
                     barmode: 'group',
                     showlegend: true
@@ -263,27 +278,6 @@
                 createStackedBarChart(filteredData, 'storeID', 'Category', 'total_quantity_sold', 'Store Performance by Category');
             }
 
-            function createClusteredBarChart(data, xAxisLabel, yAxisLabels, title) {
-                const x = data.map(item => item['customerID']);
-                const traces = yAxisLabels.map(label => {
-                    return {
-                        x: x,
-                        y: data.map(item => item[label]),
-                        name: label,
-                        type: 'bar'
-                    };
-                });
-
-                const layout = {
-                    title: title,
-                    xaxis: {title: 'Customer ID'},
-                    yaxis: {title: 'Value'},
-                    barmode: 'group',
-                    showlegend: true
-                };
-
-                Plotly.newPlot(plotContainer, traces, layout);
-            }
 
             // Trigger the change event to load the default chart on page load
             apiDropdown.dispatchEvent(new Event('change'));

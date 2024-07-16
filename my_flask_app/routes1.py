@@ -153,7 +153,7 @@ def drilldown_data():
             WHERE p.Category = %s
             GROUP BY p.Name
             ORDER BY total_quantity_sold DESC;
-                """
+            """
             params = (category,)
         elif product_name:
             # Drill down to product details
@@ -161,56 +161,56 @@ def drilldown_data():
             SELECT SKU, Name, Price, Category, Size, Ingredients, Launch
             FROM products
             WHERE Name = %s;
-                """
+            """
             params = (product_name,)
         elif store_id:
             # Drill down by store
             query = """
-        SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
-        FROM orderItems oi
-        JOIN products p ON oi.SKU = p.SKU
-        JOIN orders o ON oi.orderID = o.orderID
-        WHERE o.storeID = %s
-        GROUP BY p.Name
-        ORDER BY total_sales DESC;
-                """
+            SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
+            FROM orderItems oi
+            JOIN products p ON oi.SKU = p.SKU
+            JOIN orders o ON oi.orderID = o.orderID
+            WHERE o.storeID = %s
+            GROUP BY p.Name
+            ORDER BY total_sales DESC;
+            """
             params = (store_id,)
         elif start_date and end_date:
             # Drill down by date range
             query = """
-                    SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
-    FROM orderItems oi
-    JOIN products p ON oi.SKU = p.SKU
-    JOIN orders o ON oi.orderID = o.orderID
-    WHERE o.orderDate BETWEEN %s AND %s
-    GROUP BY p.Name
-    ORDER BY total_sales DESC;
-                    """
+            SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
+            FROM orderItems oi
+            JOIN products p ON oi.SKU = p.SKU
+            JOIN orders o ON oi.orderID = o.orderID
+            WHERE o.orderDate BETWEEN %s AND %s
+            GROUP BY p.Name
+            ORDER BY total_sales DESC;
+            """
             params = (start_date, end_date)
         elif customer_id:
             # Drill down by customer
             query = """
-                   SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_spent
-        FROM orderItems oi
-        JOIN products p ON oi.SKU = p.SKU
-        JOIN orders o ON oi.orderID = o.orderID
-        WHERE o.customerID = %s
-        GROUP BY p.Name
-        ORDER BY total_spent DESC;
-                """
+            SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_spent
+            FROM orderItems oi
+            JOIN products p ON oi.SKU = p.SKU
+            JOIN orders o ON oi.orderID = o.orderID
+            WHERE o.customerID = %s
+            GROUP BY p.Name
+            ORDER BY total_spent DESC;
+            """
             params = (customer_id,)
         elif region:
             # Drill down by region
             query = """
-        SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
-        FROM orderItems oi
-        JOIN products p ON oi.SKU = p.SKU
-        JOIN orders o ON oi.orderID = o.orderID
-        JOIN stores s ON o.storeID = s.storeID
-        WHERE s.region = %s
-        GROUP BY p.Name
-        ORDER BY total_sales DESC;
-                """
+            SELECT p.Name, SUM(o.nItems) AS total_quantity_sold, SUM(o.total) AS total_sales
+            FROM orderItems oi
+            JOIN products p ON oi.SKU = p.SKU
+            JOIN orders o ON oi.orderID = o.orderID
+            JOIN stores s ON o.storeID = s.storeID
+            WHERE s.region = %s
+            GROUP BY p.Name
+            ORDER BY total_sales DESC;
+            """
             params = (region,)
         else:
             logging.debug("Invalid drill-down parameters")
@@ -562,11 +562,9 @@ def distance_analysis():
         aggregate_data = []
         for bin_key, bin_data in binned_data.items():
             order_frequency_mean = sum(bin_data['order_frequency']) / len(bin_data['order_frequency'])
-            order_frequency_std = sqrt(sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(
-                bin_data['order_frequency']))
+            order_frequency_std = sqrt(sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(bin_data['order_frequency']))
             total_sales_mean = sum(bin_data['total_sales']) / len(bin_data['total_sales'])
-            total_sales_std = sqrt(
-                sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(bin_data['total_sales']))
+            total_sales_std = sqrt(sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(bin_data['total_sales']))
             aggregate_data.append({
                 'distance_bin': bin_key,
                 'order_frequency_mean': order_frequency_mean,
@@ -581,6 +579,7 @@ def distance_analysis():
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching distance analysis data: {error}")
         return jsonify({"error": "Database error"}), 500
+
 
 
 @app.route('/api/store_performance_by_category')
@@ -610,6 +609,7 @@ def store_performance_by_category():
         return jsonify({"error": "Internal server error"}), 500
 
 
+
 @app.route('/api/store_performance_comparison')
 def store_performance_comparison():
     try:
@@ -634,6 +634,7 @@ def store_performance_comparison():
         return jsonify({"error": "Database error"}), 500
 
 
+
 @app.route('/api/customer_segmentation')
 def customer_segmentation():
     try:
@@ -655,17 +656,14 @@ def customer_segmentation():
         cursor.close()
         conn.close()
 
-        # Modify data for easier understanding
         for entry in data:
             entry['spend_per_order'] = entry['total_spend'] / entry['num_orders'] if entry['num_orders'] else 0
-
-        # Log the data for debugging
-        app.logger.info(f"Customer Segmentation Data: {data}")
 
         return jsonify(data)
     except mysql.connector.Error as error:
         app.logger.error(f"Error fetching customer segmentation data: {error}")
         return jsonify({"error": "Database error"}), 500
+
 
 
 @app.route('/api/inventory_turnover_rate')
@@ -678,7 +676,7 @@ def inventory_turnover_rate():
             SUM(p.Price * o.nItems) AS total_revenue,
             SUM(o.nItems) AS turnover_rate
             FROM orderItems oi
-            JOIN products p ON oi.SKU =p.SKU
+            JOIN products p ON oi.SKU = p.SKU
             JOIN orders o ON oi.orderID = o.orderID
             GROUP BY p.SKU
             ORDER BY turnover_rate DESC;
@@ -693,6 +691,7 @@ def inventory_turnover_rate():
     except Exception as error:
         app.logger.error(f"An unexpected error occurred: {error}")
         return jsonify({"error": "Internal server error"}), 500
+
 
 
 # New API routes with filtering functionality
