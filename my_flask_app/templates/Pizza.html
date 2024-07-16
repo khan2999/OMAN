@@ -199,68 +199,66 @@
     <script>
         let portfolioChart, salesDistributionChart, salesTrendChart, salesPerCostChart, productPopularityChart;
 
-        function showRevenueOptions() {
-            hideAllSections();
-            document.getElementById('revenue-form-container').classList.remove('hidden');
-        }
+     function showRevenueOptions() {
+    hideAllSections(true); // Verstecke alle anderen Abschnitte außer dem Revenue-Formular
+    document.getElementById('revenue-form-container').classList.remove('hidden');
+}
 
-        function showProductPortfolio() {
-            hideAllSections();
-            document.getElementById('portfolio').classList.remove('hidden');
-            document.getElementById('portfolio-chart-container').classList.remove('hidden');
-            document.querySelector('.chart-select').classList.remove('hidden'); // Ensure the chart type selector is visible
-            fetchProductPortfolio();
-        }
 
-        function showSalesTrend() {
-            hideAllSections();
-            document.getElementById('sales-trend-chart-container').classList.remove('hidden');
-            fetchSalesTrends();
-        }
+function showProductPortfolio() {
+    hideAllSections(true);
+    document.getElementById('portfolio').classList.remove('hidden');
+    document.getElementById('portfolio-chart-container').classList.remove('hidden');
+    document.querySelector('.chart-select').classList.remove('hidden');
+    fetchProductPortfolio();
+}
 
-        function showSalesPerCost() {
-    hideAllSections();
+function showSalesTrend() {
+    hideAllSections(true);
+    document.getElementById('sales-trend-chart-container').classList.remove('hidden');
+    fetchSalesTrends();
+}
+
+function showSalesPerCost() {
+    hideAllSections(true);
     document.getElementById('sales-per-cost').classList.remove('hidden');
     document.getElementById('sales-per-cost-chart-container').classList.remove('hidden');
     fetchPizzaTypes();
     document.getElementById('pizza-select-container').classList.remove('hidden');
-    document.getElementById('sales-distribution').style.display = 'none'; // Verstecke den Sales Distribution Container
-    document.getElementById('sales-distribution-chart-container').style.display = 'none'; // Verstecke den Sales Distribution Chart Container
+    document.getElementById('sales-distribution').style.display = 'none';
+    document.getElementById('sales-distribution-chart-container').style.display = 'none';
+}
+
+function showProductPopularity() {
+    hideAllSections(true); 
+    document.getElementById('product-popularity').classList.remove('hidden');
+    document.getElementById('product-popularity-chart-container').classList.remove('hidden');
+    document.getElementById('product-popularity-container').classList.remove('hidden');
+    fetchProductPopularity();
 }
 
 
+function hideAllSections(excludeRevenueForm = false) {
+    if (!excludeRevenueForm) {
+        document.getElementById('revenue-form-container').classList.add('hidden');
+    }
 
-        function showProductPopularity() {
-            hideAllSections();
-            document.getElementById('product-popularity').classList.remove('hidden');
-            document.getElementById('product-popularity-chart-container').classList.remove('hidden');
-            document.getElementById('product-popularity-container').classList.remove('hidden');
-            fetchProductPopularity();
-        }
+    document.getElementById('portfolio').classList.add('hidden');
+    document.getElementById('portfolio-chart-container').classList.add('hidden');
+    document.getElementById('sales-distribution').classList.add('hidden');
+    document.getElementById('sales-distribution-chart-container').classList.add('hidden');
+    document.getElementById('revenue-data').classList.add('hidden');
+    document.getElementById('revenue-chart-container').classList.add('hidden');
+    document.getElementById('sales-trend-chart-container').classList.add('hidden');
+    document.getElementById('sales-per-cost').classList.add('hidden');
+    document.getElementById('sales-per-cost-chart-container').classList.add('hidden');
+    document.getElementById('product-popularity').classList.add('hidden');
+    document.getElementById('product-popularity-chart-container').classList.add('hidden');
+    document.getElementById('pizza-select-container').classList.add('hidden');
+    document.getElementById('product-popularity-container').classList.add('hidden');
+    document.querySelector('.chart-select').classList.add('hidden');
+}
 
-        function hideAllSections() {
-            document.getElementById('revenue-form-container').classList.add('hidden');
-            document.getElementById('portfolio').classList.add('hidden');
-            document.getElementById('portfolio-chart-container').classList.add('hidden');
-            document.getElementById('sales-distribution').classList.add('hidden');
-            document.getElementById('sales-distribution-chart-container').classList.add('hidden');
-            document.getElementById('revenue-data').classList.add('hidden');
-            document.getElementById('revenue-chart-container').classList.add('hidden');
-            document.getElementById('sales-trend-chart-container').classList.add('hidden');
-            document.getElementById('sales-per-cost').classList.add('hidden');
-            document.getElementById('sales-per-cost-chart-container').classList.add('hidden');
-            document.getElementById('product-popularity').classList.add('hidden');
-            document.getElementById('product-popularity-chart-container').classList.add('hidden');
-            document.getElementById('pizza-select-container').classList.add('hidden');
-            document.getElementById('product-popularity-container').classList.add('hidden');
-            document.querySelector('.chart-select').classList.add('hidden');
-        }
-
-        document.getElementById('chart-type').addEventListener('change', () => {
-            if (!document.getElementById('portfolio').classList.contains('hidden')) {
-                fetchProductPortfolio();
-            }
-        });
 
         function fetchPizzaTypes() {
             fetch('/pizza_types')
