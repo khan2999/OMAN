@@ -207,7 +207,7 @@
         <a href="/analysis2">Number based Analysis</a>
         <a href="/order_analysis">Order based Analysis</a>
     </div>
-
+    
     <main>
         <div class="results-container">
             <div class="results-box">
@@ -271,6 +271,7 @@
     let incomeTimelineChart;
     let customerTypesChart;
 
+    // function to get data for every chart and box at starting website
    function getData(period) {
 
 
@@ -294,6 +295,7 @@
     });
 }
 
+    // function to update and create data boxes
     function updateBoxes(data) {
         document.getElementById('totalRevenue').textContent = `$${formatNumber(data.total_revenue)}`;
         document.getElementById('averageOrderValue').textContent = `$${formatNumber(data.average_order_value)}`;
@@ -308,6 +310,7 @@
         });
     }
 
+    // function to update and create top 5 stores chart
     function updateTopStoresChart(period) {
         fetch('/top_stores', {
             method: 'POST',
@@ -369,6 +372,7 @@
         });
     }
 
+    // function to update and create top 5 products chart
    function updateTopProductsChart(period) {
     fetch('/top_products', {
         method: 'POST',
@@ -455,7 +459,7 @@
 
 
 
-
+// function to update and create customer income timeline chart
 function updateIncomeTimelineChart(period = '') {
     fetch('/income_timeline', {
         method: 'POST',
@@ -526,7 +530,7 @@ function updateIncomeTimelineChart(period = '') {
         console.error('Error fetching or processing income timeline data:', error);
     });
 }
-
+    // function to update and create customer types chart
         function updateCustomerTypesChart(period) {
     fetch('/customer_types', {
         method: 'POST',
@@ -584,7 +588,7 @@ function updateIncomeTimelineChart(period = '') {
     });
 }
 
-
+    //Function for how income timeline should be depending on different time periods
   function processDataForPeriod(data, period) {
     let labels = [];
     let values = [];
@@ -632,7 +636,7 @@ function updateIncomeTimelineChart(period = '') {
 
     return { labels, values };
 }
-
+    //sidebar function to toggle
     function toggleNav() {
         const sidebar = document.getElementById('mySidebar');
         if (sidebar.style.width === '250px') {
@@ -641,7 +645,7 @@ function updateIncomeTimelineChart(period = '') {
             sidebar.style.width = '250px';
         }
     }
-
+    // Event listener to load all time data at starting/refreshing welcome page
     document.addEventListener('DOMContentLoaded', () => {
         getData('');
     });
