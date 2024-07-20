@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>kpi's Dashboard</title>
+    <title>KPI's Dashboard</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -16,6 +15,7 @@
             min-height: 100vh;
         }
 
+        /* Styles for the container */
         .container {
             flex: 1;
             width: 95%;
@@ -35,6 +35,7 @@
             margin-bottom: 20px;
         }
 
+        /* Styles for dropdown and buttons */
         #api-dropdown, .btn {
             padding: 10px;
             margin: 10px 0;
@@ -48,6 +49,7 @@
             transition: all 0.3s ease;
         }
 
+        /* Hover effect for dropdown and buttons */
         #api-dropdown:hover, .btn:hover {
             border-color: #007bff;
         }
@@ -58,11 +60,13 @@
             margin-top: 20px;
         }
 
+        /* Styles for the loading spinner */
         .spinner {
             margin-top: 20px;
             display: none;
         }
 
+        /* Styles for each spinner dot */
         .spinner div {
             width: 18px;
             height: 18px;
@@ -72,6 +76,7 @@
             animation: bounce 1.4s infinite ease-in-out both;
         }
 
+        /* Animation delay for the spinner dots */
         .spinner div:nth-child(1) {
             animation-delay: -0.32s;
         }
@@ -89,19 +94,21 @@
             }
         }
     </style>
+    <!-- Load Plotly library -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <!-- JavaScript for interactivity -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const apiDropdown = document.getElementById("api-dropdown");
-            const plotContainer = document.getElementById("plot-container");
-            const spinner = document.querySelector('.spinner');
-
+            const apiDropdown = document.getElementById("api-dropdown"); // Dropdown for API selection
+            const plotContainer = document.getElementById("plot-container"); // Container for the plot
+            const spinner = document.querySelector('.spinner'); // Loading spinner
+            // Event listener for dropdown change
             apiDropdown.addEventListener("change", function () {
                 const selectedApi = apiDropdown.value;
+                Plotly.purge(plotContainer); // Clear existing plot
+                spinner.style.display = 'block'; // Show spinner
 
-                Plotly.purge(plotContainer);
-                spinner.style.display = 'block';
-
+                // Fetch data from the selected API
                 fetch(`/api/${selectedApi}`)
                     .then(response => response.json())
                     .then(data => {
@@ -109,19 +116,20 @@
 
                         // Check the selected API and render the appropriate chart
                         if (selectedApi === "conversion_rate") {
-                            renderConversionRateChart(data);
+                            renderConversionRateChart(data); // Render conversion rate chart
                         } else {
-                            const figure = JSON.parse(data);
-                            Plotly.newPlot(plotContainer, figure.data, figure.layout);
+                            const figure = JSON.parse(data); // Parse figure data
+                            Plotly.newPlot(plotContainer, figure.data, figure.layout); // Plot new chart
                         }
                     })
                     .catch(error => {
-                        console.error('Error fetching data:', error);
-                        alert('Failed to load chart data.');
-                        spinner.style.display = 'none';
+                        console.error('Error fetching data:', error); // Log error
+                        alert('Failed to load chart data.'); // Alert user
+                        spinner.style.display = 'none'; // Hide spinner
                     });
             });
 
+            // Function to render conversion rate chart
             function renderConversionRateChart(data) {
                 const value = data[0].conversion_rate;
 
@@ -129,13 +137,13 @@
                     type: 'indicator',
                     mode: 'gauge',
                     value: value,
-                    title: {text: 'Conversion Rate'},
+                    title: { text: 'Conversion Rate' },
                     gauge: {
-                        axis: {range: [0, 100]},
-                        bar: {color: '#007bff'}
+                        axis: { range: [0, 100] },
+                        bar: { color: '#007bff' }
                     }
                 };
-
+                // Plot gauge chart
                 Plotly.newPlot(plotContainer, [trace]);
             }
 
@@ -145,21 +153,26 @@
     </script>
 </head>
 <body>
-<div class="container">
-    <h1>Key Performance Indicators (KPIs)</h1>
-    <select id="api-dropdown" class="btn">
-        <option value="revenue_growth">Revenue Growth</option>
-        <option value="new_vs_returning_customers">New vs. Returning Customers</option>
-        <option value="popular_products">Popular Products</option>
-        <option value="conversion_rate">Conversion Rate</option>
-        <option value="order_frequency">Order Frequency</option>
-    </select>
-    <div class="spinner">
-        <div></div>
-        <div></div>
-        <div></div>
+    <style>
+        body {
+            background-image: url('{{ url_for('static', filename='pizza-background4.jpg') }}');
+        }
+    </style>
+    <div class="container">
+        <h1>Key Performance Indicators (KPIs)</h1>
+        <select id="api-dropdown" class="btn">
+            <option value="revenue_growth">Revenue Growth</option>
+            <option value="new_vs_returning_customers">New vs. Returning Customers</option>
+            <option value="popular_products">Popular Products</option>
+            <option value="conversion_rate">Conversion Rate</option>
+            <option value="order_frequency">Order Frequency</option>
+        </select>
+        <div class="spinner">
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+        <div id="plot-container"></div>
     </div>
-    <div id="plot-container"></div>
-</div>
 </body>
 </html>

@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // DOM elements
     const chartSelector = document.getElementById('chartSelector');
     const dateFilters = document.getElementById('dateFilters');
     const categoryFilters = document.getElementById('categoryFilters');
@@ -10,14 +11,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const drillDownCharts = ['Total Sales by Product Category', 'Top Selling Products', 'Sales Trends Over Time', 'Product Details (Price by SKU)'];
 
+    // Show loading spinner
     function showLoading() {
         loadingSpinner.style.display = 'block';
     }
 
+    // Hide loading spinner
     function hideLoading() {
         loadingSpinner.style.display = 'none';
     }
 
+// Show tooltip on chart
     function showTooltip(x, y, value) {
         const tooltip = document.createElement('div');
         tooltip.classList.add('chart-tooltip');
@@ -30,6 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 0);
     }
 
+    // Hide tooltip on chart
     function hideTooltip() {
         const tooltips = document.querySelectorAll('.chart-tooltip');
         tooltips.forEach(tooltip => {
@@ -52,6 +57,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
+    // Render chart based on the type and data
     function renderChart(chartData, chartLabels, chartType, title) {
         const chart = echarts.init(chartContainer);
 
@@ -59,10 +65,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (chartType === 'bar') {
             option = {
                 color: colorPalette,
-                title: { text: title },
+                title: {text: title},
                 tooltip: {
                     trigger: 'axis',
-                    axisPointer: { type: 'shadow' },
+                    axisPointer: {type: 'shadow'},
                     formatter: function (params) {
                         return `${params[0].name}: ${params[0].value.toLocaleString('en-US', {
                             minimumFractionDigits: 2,
@@ -73,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 xAxis: {
                     type: 'category',
                     data: chartLabels,
-                    axisLabel: { interval: 0 }
+                    axisLabel: {interval: 0}
                 },
                 yAxis: {
                     type: 'value',
@@ -90,21 +96,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     type: chartType,
                     data: chartData,
                     emphasis: {
-                        itemStyle: { color: drillDownCharts.includes(title) ? 'green' : null }
+                        itemStyle: {color: drillDownCharts.includes(title) ? 'green' : null}
                     }
                 }],
                 toolbox: {
                     feature: {
-                        dataView: { readOnly: false },
+                        dataView: {readOnly: false},
                         restore: {},
                         saveAsImage: {},
                         dataZoom: {},
-                        magicType: { type: ['line', 'bar'] }
+                        magicType: {type: ['line', 'bar']}
                     }
                 },
                 dataZoom: [
-                    { type: 'slider', start: 0, end: 100 },
-                    { type: 'inside', start: 0, end: 100 }
+                    {type: 'slider', start: 0, end: 100},
+                    {type: 'inside', start: 0, end: 100}
                 ]
             };
         } else if (chartType === 'line') {
@@ -134,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     type: 'category',
                     boundaryGap: false,
                     data: chartLabels,
-                    axisLabel: { interval: 0, rotate: 30 }
+                    axisLabel: {interval: 0, rotate: 30}
                 },
                 yAxis: {
                     type: 'value',
@@ -150,32 +156,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     data: chartData,
                     markPoint: {
                         data: [
-                            { type: 'max', name: 'Max' },
-                            { type: 'min', name: 'Min' }
+                            {type: 'max', name: 'Max'},
+                            {type: 'min', name: 'Min'}
                         ]
                     },
                     markLine: {
                         data: [
-                            { type: 'average', name: 'Average' }
+                            {type: 'average', name: 'Average'}
                         ]
                     }
                 }],
                 toolbox: {
                     feature: {
-                        dataView: { readOnly: false },
+                        dataView: {readOnly: false},
                         restore: {},
                         saveAsImage: {},
                         dataZoom: {},
-                        magicType: { type: ['line', 'bar'] }
+                        magicType: {type: ['line', 'bar']}
                     }
                 },
                 dataZoom: [
-                    { type: 'slider', start: 0, end: 100 },
-                    { type: 'inside', start: 0, end: 100 }
+                    {type: 'slider', start: 0, end: 100},
+                    {type: 'inside', start: 0, end: 100}
                 ]
             }
         }
-
+        // Event listener for drill down on chart click
         chart.on('click', function (params) {
             const existingButton = document.querySelector('.drill-down-button');
             if (existingButton) {
@@ -231,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             chartContainer.appendChild(button);
         });
-
+        // Resize chart on window resize
         window.addEventListener('resize', function () {
             chart.resize();
         });
@@ -239,6 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
         chart.setOption(option);
     }
 
+    // Update chart based on selected filters
     function updateChart() {
         showLoading();
         const selectedChart = chartSelector.value;
@@ -259,6 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 let chartLabels, chartData, chartType, title;
 
+                // Determine chart type and data based on selected chart
                 switch (selectedChart) {
                     case 'total_sales_by_category':
                         chartLabels = data.map(item => item[0]);
@@ -309,9 +317,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         title = '';
                 }
 
-                renderChart(chartData, chartLabels, chartType, title);
-                hideLoading();
+                renderChart(chartData, chartLabels, chartType, title); // Render chart with updated data
+                hideLoading(); // Hide loading spinner
 
+                // Handle drill-down button visibility
                 const drillDownChartsKeys = ['total_sales_by_category', 'top_selling_products', 'product_details', 'sales_trends_over_time'];
                 const drillDownButton = document.querySelector('.drill-down-button');
                 if (drillDownChartsKeys.includes(selectedChart)) {
@@ -330,10 +339,11 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(error => {
                 console.error('Error fetching chart data:', error);
-                hideLoading();
+                hideLoading();// Hide loading spinner
             });
     }
 
+    // Update filters visibility based on selected chart type
     function updateFilters() {
         const selectedOption = chartSelector.options[chartSelector.selectedIndex];
         const filters = selectedOption.dataset.filters.split(' ');
@@ -343,9 +353,10 @@ document.addEventListener('DOMContentLoaded', function () {
         stateSelector.style.display = filters.length > 0 ? 'block' : 'none';
     }
 
+    // Event listeners for chart selection and filter button
     chartSelector.addEventListener('change', updateFilters);
     filterButton.addEventListener('click', updateChart);
-
+// Create and configure exit drill-down button
     const exitDrilldownButton = document.createElement('button');
     exitDrilldownButton.classList.add('exit-drill-down-button');
     exitDrilldownButton.innerText = 'Exit Drill Down';
@@ -356,5 +367,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
     chartContainer.appendChild(exitDrilldownButton);
 
-    updateFilters();
+    updateFilters();// Initialize filters based on selected chart
 });

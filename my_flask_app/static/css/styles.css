@@ -179,3 +179,22 @@ h1 {
     background-color: #545b62;
     border-color: #3e4348;
 }
+
+/* Exit Drill Down Button */
+.exit-drill-down-button {
+    position: absolute; /* Position the button within the chart container */
+    bottom: 20px; /* Adjust as needed for spacing */
+    right: 20px;
+    z-index: 10; /* Ensure button is on top */
+}
+
+.exit-drill-down-button {
+    background-color: #dc3545; /* Red background */
+    border-color: #dc3545;
+    color: #fff; /* White text */
+}
+
+.exit-drill-down-button:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}

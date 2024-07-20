@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charts Analysis</title>
+    <title>Charts Analysis Dashboard</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="../static/css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.2.2/dist/echarts.min.js"></script>
@@ -28,11 +28,12 @@
 </header>
 <main class="container-fluid d-flex flex-column p-0" style="flex-grow: 1;">
     <div class="container-fluid mt-4" style="flex-grow: 1; display: flex; flex-direction: column;">
-        <h1 class="text-center my-4">Manager Dashboard</h1>
+        <h1 class="text-center my-4"></h1>
         <div class="filter-container row mb-4 justify-content-center">
             <div class="col-md-2 mb-3">
                 <select id="chartSelector" class="filter form-control" onchange="showChart(this.value)">
-                    <option value="total_sales_by_category" data-filters="category date">Total Sales by Category</option>
+                    <option value="total_sales_by_category" data-filters="category date">Total Sales by Category
+                    </option>
                     <option value="sales_trends_over_time" data-filters="date">Sales Trends Over Time</option>
                     <option value="top_selling_products" data-filters="category">Top Selling Products</option>
                     <option value="customer_distribution">Customer Distribution by States</option>
@@ -42,8 +43,10 @@
                 </select>
             </div>
             <div id="dateFilters" class="col-md-2 mb-3 filter-group" style="display:none;">
-                <input type="date" id="startDate" class="filter form-control" placeholder="Start Date" aria-label="Start Date">
-                <input type="date" id="endDate" class="filter form-control mt-2" placeholder="End Date" aria-label="End Date">
+                <input type="date" id="startDate" class="filter form-control" placeholder="Start Date"
+                       aria-label="Start Date">
+                <input type="date" id="endDate" class="filter form-control mt-2" placeholder="End Date"
+                       aria-label="End Date">
             </div>
             <div id="categoryFilters" class="col-md-2 mb-3 filter-group" style="display:none;">
                 <select id="categorySelector" class="filter form-control" aria-label="Category Selector">
@@ -60,7 +63,8 @@
                 </select>
             </div>
             <div class="col-md-2 mb-3">
-                <button id="filterButton" class="btn btn-primary w-100 btn-animate" aria-label="Show Chart">Show Chart</button>
+                <button id="filterButton" class="btn btn-primary w-100 btn-animate" aria-label="Show Chart">Show Chart
+                </button>
             </div>
         </div>
 

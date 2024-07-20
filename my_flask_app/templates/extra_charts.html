@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Sales Insights Dashboard</title>
+    /* Basic styling for the body */
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -16,6 +17,7 @@
             min-height: 100vh;
         }
 
+        /* Styling for the main container */
         .container {
             flex: 1;
             width: 90%;
@@ -63,6 +65,7 @@
             animation: bounce 1.4s infinite ease-in-out both;
         }
 
+        /* Animation delays for the spinner's balls */
         .spinner div:nth-child(1) {
             animation-delay: -0.32s;
         }
@@ -80,8 +83,10 @@
             }
         }
     </style>
+    <!-- Including Plotly.js library for plotting -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script>
+        // Wait until the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', async () => {
             const apiDropdown = document.getElementById("api-dropdown");
             const plotContainer = document.getElementById("plot-container");
@@ -89,19 +94,20 @@
             const spinner = document.querySelector('.spinner');
             let currentApi = null;
 
+            // Event listener for dropdown change
             apiDropdown.addEventListener("change", async () => {
                 const selectedApi = apiDropdown.value;
                 currentApi = selectedApi;
-
+                // Clear the plot and filters, show the spinner
                 Plotly.purge(plotContainer);
                 filterContainer.innerHTML = '';
                 spinner.style.display = 'block';
-
+                // Fetch data from the selected API endpoint
                 const response = await fetch(`/api/${selectedApi}`);
                 const data = await response.json();
-
+                // Hide the spinner once data is loaded
                 spinner.style.display = 'none';
-
+                // Switch between different API endpoints and create corresponding plots
                 switch (selectedApi) {
                     case 'sales_by_day_of_week':
                         createBarPlot(data, 'day_of_week', 'total_sales', 'Sales by Day of Week');
@@ -120,7 +126,7 @@
                         createClusteredBarChart(data, 'customerID', ['total_spend', 'num_orders'], 'Customer Segmentation');
                         break;
                     case 'store_performance_comparison':
-                        createClusteredBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_size'], 'Store Performance Comparison');
+                        createClusteredBarChart(data, 'storeID', ['total_sales', 'num_orders', 'average_order_value'], 'Store Performance Comparison');
                         break;
                     case 'inventory_turnover_rate':
                         createBarPlot(data, 'SKU', 'turnover_rate', 'Inventory Turnover Rate');
@@ -130,6 +136,7 @@
                 }
             });
 
+            // Function to create a bar plot
             function createBarPlot(data, xAxisLabel, yAxisLabel, title) {
                 const x = data.map(item => item[xAxisLabel]);
                 const y = data.map(item => item[yAxisLabel]);
@@ -149,6 +156,7 @@
                 Plotly.newPlot(plotContainer, [trace], layout);
             }
 
+            // Function to create a pie chart
             function createPieChart(data, labelsKey, valuesKey, title) {
                 const labels = data.map(item => item[labelsKey]);
                 const values = data.map(item => item[valuesKey]);
@@ -168,6 +176,7 @@
                 Plotly.newPlot(plotContainer, [trace], layout);
             }
 
+// Function to render a distance analysis scatter plot
             function renderDistanceAnalysisChart(data) {
                 const trace1 = {
                     x: data.map(d => d.distance_bin),
@@ -195,6 +204,7 @@
                 Plotly.newPlot(plotContainer, [trace1, trace2], layout);
             }
 
+            // Function to create a stacked bar chart
             function createStackedBarChart(data, xAxisLabel, stackLabel, yAxisLabel, title) {
                 const uniqueXValues = [...new Set(data.map(item => item[xAxisLabel]))];
                 const uniqueStackValues = [...new Set(data.map(item => item[stackLabel]))];
@@ -219,6 +229,7 @@
                 Plotly.newPlot(plotContainer, traces, layout);
             }
 
+            // Function to create a clustered bar chart
             function createClusteredBarChart(data, xAxisLabel, yAxisLabels, title) {
                 const x = data.map(item => item[xAxisLabel]);
                 const traces = yAxisLabels.map(label => {
@@ -241,6 +252,7 @@
                 Plotly.newPlot(plotContainer, traces, layout);
             }
 
+            // Function to create filters for store and category
             function createStoreCategoryFilters(data) {
                 const uniqueStoreIDs = [...new Set(data.map(item => item['storeID']))];
                 const uniqueCategories = [...new Set(data.map(item => item['Category']))];
@@ -262,6 +274,7 @@
                 categoryDropdown.addEventListener('change', applyFilters);
             }
 
+            // Function to apply filters and update the chart
             async function applyFilters() {
                 const storeID = document.getElementById('store-filter').value;
                 const category = document.getElementById('category-filter').value;
@@ -288,6 +301,7 @@
 <div class="container">
     <h1>Sales Insights Dashboard</h1>
     <div id="filter-container"></div>
+    <!-- Dropdown for selecting the API endpoint -->
     <select id="api-dropdown">
         <option value="sales_by_day_of_week">Sales by Day of Week</option>
         <option value="product_size_sales">Product Size Sales</option>
@@ -297,6 +311,7 @@
         <option value="store_performance_comparison">Store Performance Comparison</option>
         <option value="inventory_turnover_rate">Inventory Turnover Rate</option>
     </select>
+    <!-- Spinner to indicate loading -->
     <div class="spinner">
         <div></div>
         <div></div>

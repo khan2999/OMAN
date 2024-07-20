@@ -1,19 +1,18 @@
 import json
-import logging
 import re
 from collections import defaultdict
 from decimal import Decimal
 from math import radians, cos, sin, asin, sqrt
-
 import mysql.connector
 import plotly.graph_objects as go
 import plotly.io as pio
 from flask import jsonify
 from flask import render_template, request
-from plotly.subplots import make_subplots
-
 from my_flask_app import app
 from my_flask_app.db import get_db_connection
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 # Database connection
 mydb = mysql.connector.connect(
@@ -24,6 +23,7 @@ mydb = mysql.connector.connect(
 )
 
 
+# Execute a query against the database
 def execute_query(query, params=None):
     connection = get_db_connection()
     if connection:
@@ -40,6 +40,7 @@ def execute_query(query, params=None):
             return None
 
 
+# Convert decimal values in data to float
 def decimal_to_float(data):
     if data is None:
         return []
@@ -50,6 +51,7 @@ def decimal_to_float(data):
     return data
 
 
+# Predefined SQL queries for the first 7 charts
 queries = {
     'total_sales_by_category': """
                   SELECT p.Category, SUM(p.Price * o.nItems) AS total_sales
@@ -89,28 +91,12 @@ queries = {
             {filter_clause}
             GROUP BY s.state_abbr;
         """,
-    'customer_order_frequency_distribution': """
-            SELECT COUNT(o.customerID) AS order_frequency, COUNT(DISTINCT o.customerID) AS customer_count
-            FROM orders o
-            {filter_clause}
-            GROUP BY o.customerID
-            ORDER BY order_frequency ASC;
-        """,
     'customer_growth': """
             SELECT DATE_FORMAT(orderDate, '%Y-%m') AS month, COUNT(DISTINCT customerID) AS total_customers
             FROM orders o
             JOIN stores s ON o.storeID = s.storeID
             {filter_clause}
             GROUP BY month;
-        """,
-    'order_frequency': """
-            SELECT ROUND(AVG(order_count), 2) AS average_order_frequency
-            FROM (
-                SELECT customerID, COUNT(orderID) AS order_count
-                FROM orders
-                GROUP BY customerID
-            ) AS subquery
-            {filter_clause};
         """,
     'average_order_value': """
             SELECT AVG(total) AS average_order_value
@@ -126,11 +112,8 @@ queries = {
 
 }
 
-import logging
 
-logging.basicConfig(level=logging.DEBUG)
-
-
+# Endpoint to fetch drill-down data based on query parameters
 @app.route('/drilldown', methods=['GET'])
 def drilldown_data():
     try:
@@ -239,6 +222,7 @@ def drilldown_data():
         return jsonify({"error": str(e)}), 500
 
 
+# Fetch data from the database and return columns and results
 def fetch_data(query):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -250,11 +234,13 @@ def fetch_data(query):
     return columns, results
 
 
+# Render the KPI report page
 @app.route('/Kpi_Report')
 def index2():
     return render_template('Kpi_Report.html')
 
 
+# Endpoint for new vs. returning customers pie chart
 @app.route('/api/new_vs_returning_customers')
 def new_vs_returning_customers():
     try:
@@ -279,6 +265,7 @@ def new_vs_returning_customers():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint for popular Products
 @app.route('/api/popular_products')
 def popular_products():
     try:
@@ -301,6 +288,7 @@ def popular_products():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint to fetch and visualize revenue growth over time
 @app.route('/api/revenue_growth')
 def revenue_growth():
     try:
@@ -329,6 +317,7 @@ def revenue_growth():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint to calculate and return conversion rate
 @app.route('/api/conversion_rate')
 def conversion_rate():
     try:
@@ -347,6 +336,7 @@ def conversion_rate():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint to get order frequency for top 10 customers
 @app.route('/api/order_frequency')
 def order_frequency():
     try:
@@ -369,6 +359,7 @@ def order_frequency():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint to render analysis page
 @app.route('/analysis1', methods=['GET', 'POST'])
 def analysis1_page():
     charts_data = {}
@@ -380,6 +371,7 @@ def analysis1_page():
     return render_template('melle.html', charts_data=json.dumps(charts_data))
 
 
+# Endpoint to get list of states
 @app.route('/states', methods=['GET'])
 def get_states():
     query = "SELECT DISTINCT state FROM stores;"
@@ -389,11 +381,13 @@ def get_states():
     return jsonify(states)
 
 
+# Utility function to validate date format
 def validate_date(date_str):
     """Validate date format (YYYY-MM-DD)."""
     return re.match(r'^\d{4}-\d{2}-\d{2}$', date_str) is not None
 
 
+# Endpoint to filter data based on multiple criteria
 @app.route('/filter', methods=['GET'])
 def filter_data():
     try:
@@ -451,12 +445,13 @@ def filter_data():
         return jsonify({"error": "Internal server error"}), 500
 
 
+# Endpoint to render charts page (sales insight Dashboard)
 @app.route('/charts')
 def charts_page():
     return render_template('extra_charts.html')
 
 
-# Adding the new API routes
+# Endpoint to get sales data by day of week
 @app.route('/api/sales_by_day_of_week')
 def sales_by_day_of_week():
     try:
@@ -477,6 +472,7 @@ def sales_by_day_of_week():
         return jsonify({"error": "Database error"}), 500
 
 
+# Endpoint to get product size sales data
 @app.route('/api/product_size_sales')
 def product_size_sales():
     try:
@@ -498,6 +494,7 @@ def product_size_sales():
         return jsonify({"error": "Database error"}), 500
 
 
+# Utility function to calculate Haversine distance between two geographical points
 def calculate_distance(lat1, lon1, lat2, lon2):
     """
     Calculate the Haversine distance between two geographical points.
@@ -516,6 +513,7 @@ def calculate_distance(lat1, lon1, lat2, lon2):
     return c * r
 
 
+# Endpoint to perform distance analysis between stores and customers
 @app.route('/api/distance_analysis')
 def distance_analysis():
     try:
@@ -562,9 +560,11 @@ def distance_analysis():
         aggregate_data = []
         for bin_key, bin_data in binned_data.items():
             order_frequency_mean = sum(bin_data['order_frequency']) / len(bin_data['order_frequency'])
-            order_frequency_std = sqrt(sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(bin_data['order_frequency']))
+            order_frequency_std = sqrt(sum((x - order_frequency_mean) ** 2 for x in bin_data['order_frequency']) / len(
+                bin_data['order_frequency']))
             total_sales_mean = sum(bin_data['total_sales']) / len(bin_data['total_sales'])
-            total_sales_std = sqrt(sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(bin_data['total_sales']))
+            total_sales_std = sqrt(
+                sum((x - total_sales_mean) ** 2 for x in bin_data['total_sales']) / len(bin_data['total_sales']))
             aggregate_data.append({
                 'distance_bin': bin_key,
                 'order_frequency_mean': order_frequency_mean,
@@ -581,7 +581,7 @@ def distance_analysis():
         return jsonify({"error": "Database error"}), 500
 
 
-
+# Endpoint to get the performance of stores by product category
 @app.route('/api/store_performance_by_category')
 def store_performance_by_category():
     try:
@@ -609,7 +609,7 @@ def store_performance_by_category():
         return jsonify({"error": "Internal server error"}), 500
 
 
-
+# Endpoint to compare performance of stores
 @app.route('/api/store_performance_comparison')
 def store_performance_comparison():
     try:
@@ -619,7 +619,7 @@ def store_performance_comparison():
             SELECT s.storeID,
             SUM(o.total) AS total_sales,
             COUNT(o.orderID) AS num_orders,
-            AVG(o.total) AS average_order_size
+            AVG(o.total) AS average_order_value
             FROM orders o
             JOIN stores s ON o.storeID = s.storeID
             GROUP BY s.storeID
@@ -634,7 +634,7 @@ def store_performance_comparison():
         return jsonify({"error": "Database error"}), 500
 
 
-
+# Endpoint to segment customers based on their spending and order frequency
 @app.route('/api/customer_segmentation')
 def customer_segmentation():
     try:
@@ -665,7 +665,7 @@ def customer_segmentation():
         return jsonify({"error": "Database error"}), 500
 
 
-
+# Endpoint to calculate inventory turnover rate
 @app.route('/api/inventory_turnover_rate')
 def inventory_turnover_rate():
     try:
@@ -693,33 +693,7 @@ def inventory_turnover_rate():
         return jsonify({"error": "Internal server error"}), 500
 
 
-
-# New API routes with filtering functionality
-
-@app.route('/api/filter_sales_by_day_of_week', methods=['POST'])
-def filter_sales_by_day_of_week():
-    try:
-        data = request.get_json()
-        day_of_week = data['day_of_week']
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        cursor.execute('''
-            SELECT DAYNAME(o.orderDate) AS day_of_week, SUM(o.total) AS total_sales
-            FROM orders o
-            WHERE DAYNAME(o.orderDate) = %s
-            GROUP BY DAYNAME(o.orderDate)
-            ORDER BY FIELD(day_of_week, 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
-        ''', (day_of_week,))
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching filtered sales by day of week data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
-
-# Adjust the filter functionality
+# Endpoint to filter store performance by category
 @app.route('/api/filter_store_performance_by_category', methods=['GET', 'POST'])
 def filter_store_performance_by_category():
     try:
@@ -761,148 +735,7 @@ def filter_store_performance_by_category():
         return jsonify({"error": "Database error"}), 500
 
 
-@app.route('/api/filter_average_order_value_over_time', methods=['POST'])
-def filter_average_order_value_over_time():
-    try:
-        data = request.get_json()
-        start_date = data['start_date']
-        end_date = data['end_date']
-        store_id = data.get('store_id')
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        query = '''
-            SELECT 
-            DATE_FORMAT(o.orderDate, '%Y-%m') AS month,
-            AVG(o.total) AS average_order_value
-            FROM orders o
-            WHERE o.orderDate BETWEEN %s AND %s
-        '''
-        params = [start_date, end_date]
-        if store_id:
-            query += ' AND o.storeID = %s'
-            params.append(store_id)
-        query += ' GROUP BY month ORDER BY month'
-        cursor.execute(query, params)
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching filtered average order value over time data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
-
-@app.route('/api/filter_store_performance_comparison', methods=['POST'])
-def filter_store_performance_comparison():
-    try:
-        data = request.get_json()
-        store_ids = data.get('store_ids')
-        start_date = data['start_date']
-        end_date = data['end_date']
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        query = '''
-            SELECT s.storeID,
-            SUM(o.total) AS total_sales,
-            COUNT(o.orderID) AS num_orders,
-            AVG(o.total) AS average_order_size
-            FROM orders o
-            JOIN stores s ON o.storeID = s.storeID
-            WHERE o.orderDate BETWEEN %s AND %s
-        '''
-        params = [start_date, end_date]
-        if store_ids:
-            query += ' AND s.storeID IN (' + ','.join(['%s'] * len(store_ids)) + ')'
-            params.extend(store_ids)
-        query += ' GROUP BY s.storeID ORDER BY total_sales DESC'
-        cursor.execute(query, params)
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching filtered store performance comparison data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
-
-@app.route('/api/filter_customer_segmentation', methods=['POST'])
-def filter_customer_segmentation():
-    try:
-        data = request.get_json()
-        state = data.get('state')
-        city = data.get('city')
-        zip_code = data.get('zip_code')
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        query = '''
-            SELECT c.customerID,
-            SUM(o.total) AS total_spend,
-            COUNT(o.orderID) AS num_orders,
-            s.state_abbr AS state,
-            s.city AS city,
-            s.zip_code AS zip_code
-            FROM orders o
-            JOIN customers c ON o.customerID = c.customerID
-            JOIN stores s ON o.storeID = s.storeID
-            WHERE 1=1
-        '''
-        params = []
-        if state:
-            query += ' AND s.state_abbr = %s'
-            params.append(state)
-        if city:
-            query += ' AND s.city = %s'
-            params.append(city)
-        if zip_code:
-            query += ' AND s.zip_code = %s'
-            params.append(zip_code)
-        query += ' GROUP BY c.customerID, s.state_abbr, s.city, s.zip_code ORDER BY total_spend DESC'
-        cursor.execute(query, params)
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching filtered customer segmentation data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
-
-@app.route('/api/filter_inventory_turnover_rate', methods=['POST'])
-def filter_inventory_turnover_rate():
-    try:
-        data = request.get_json()
-        category = data.get('category')
-        size = data.get('size')
-        conn = get_db_connection()
-        cursor = conn.cursor(dictionary=True)
-        query = '''
-            SELECT p.SKU, p.Category, p.Size, 
-            SUM(o.nItems) AS total_quantity_sold,
-            SUM(p.Price * o.nItems) AS total_revenue,
-            SUM(o.nItems) AS turnover_rate
-            FROM orderItems oi
-            JOIN products p ON oi.SKU = p.SKU
-            JOIN orders o ON oi.orderID = o.orderID
-            WHERE 1=1
-        '''
-        params = []
-        if category:
-            query += ' AND p.Category = %s'
-            params.append(category)
-        if size:
-            query += ' AND p.Size = %s'
-            params.append(size)
-        query += ' GROUP BY p.SKU, p.Category, p.Size ORDER BY turnover_rate DESC'
-        cursor.execute(query, params)
-        data = cursor.fetchall()
-        cursor.close()
-        conn.close()
-        return jsonify(data)
-    except mysql.connector.Error as error:
-        app.logger.error(f"Error fetching filtered inventory turnover rate data: {error}")
-        return jsonify({"error": "Database error"}), 500
-
-
+# Main entry point for the application
 if __name__ == '__main__':
     logging.debug("Starting Flask app")
     app.run(debug=True)
